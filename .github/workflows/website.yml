@@ -1,0 +1,31 @@
+name: Website
+on:
+  push:
+    branches: [main]
+    paths: ['site/**', '.github/workflows/website.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: vorkflo-website
+  cancel-in-progress: true
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: site/.node-version
+      - run: npm run site:verify
+      - name: Trigger Cloudflare Pages build
+        env:
+          DEPLOY_HOOK: ${{ secrets.VORKFLO_SITE_DEPLOY_HOOK }}
+        run: |
+          test -n "$DEPLOY_HOOK"
+          curl --fail --silent --show-error --retry 2 --request POST "$DEPLOY_HOOK" --output "$RUNNER_TEMP/vorkflo-pages-deploy.json"
+          node -e 'const fs = require("node:fs"); const result = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (result.success !== true) throw new Error("Cloudflare rejected the website build"); console.log("Cloudflare accepted the website build.");' "$RUNNER_TEMP/vorkflo-pages-deploy.json"

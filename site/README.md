@@ -23,7 +23,9 @@ Cloudflare Pages project **vorkflo-web** connects to **vrnrn/Vorkflo** with:
 - Environment variable: `SKIP_DEPENDENCY_INSTALL=true`
 - Custom domain: `vorkflo.vrnrn.com`
 
-Production pushes that change `site/` trigger the Pages build. Local builds and previews do not publish. The domain remains associated with this Pages project; its proxied CNAME points to `vorkflo-web.pages.dev`. Manage the domain through Pages so Cloudflare provisions its association and TLS. The portfolio at `vrnrn.com` and its article-star Worker are maintained separately in [vrnrn/vrnrn.com](https://github.com/vrnrn/vrnrn.com).
+The [Website workflow](../.github/workflows/website.yml) verifies website changes on `main` and triggers a Pages build through the `github-main-website` deploy hook. Its URL is stored only in the `VORKFLO_SITE_DEPLOY_HOOK` repository secret. The hook builds the latest `main`; Cloudflare's native automatic Git deployments and preview builds are disabled. Changes to application code alone do not publish the website. The workflow can also be dispatched manually on `main`.
+
+Local builds and previews do not publish. The domain remains associated with this Pages project; its proxied CNAME points to `vorkflo-web.pages.dev`. Manage the domain through Pages so Cloudflare provisions its association and TLS. The portfolio at `vrnrn.com` and its article-star Worker are maintained separately in [vrnrn/vrnrn.com](https://github.com/vrnrn/vrnrn.com).
 
 The former **vorkflo-site** Pages project is retained with automatic deployments disabled for rollback. It no longer owns the custom domain. Its previous deployment remains available at `vorkflo-site.pages.dev`.
 
