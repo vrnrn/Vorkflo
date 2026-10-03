@@ -13,7 +13,7 @@ The website has no npm dependencies and can also be built independently with `np
 
 ## Publishing
 
-Cloudflare Pages project **vorkflo-site** connects to **vrnrn/Vorkflo** with:
+Cloudflare Pages project **vorkflo-web** connects to **vrnrn/Vorkflo** with:
 
 - Production branch: `main`
 - Root directory: `site`
@@ -23,7 +23,7 @@ Cloudflare Pages project **vorkflo-site** connects to **vrnrn/Vorkflo** with:
 - Environment variable: `SKIP_DEPENDENCY_INSTALL=true`
 - Custom domain: `vorkflo.vrnrn.com`
 
-Production pushes that change `site/` trigger the Pages build. Local builds and previews do not publish. The domain remains associated with this Pages project; its proxied CNAME points to `vorkflo-site.pages.dev`. Manage the domain through Pages so Cloudflare provisions its association and TLS. The portfolio at `vrnrn.com` and its article-star Worker are maintained separately in [vrnrn/vrnrn.com](https://github.com/vrnrn/vrnrn.com).
+Production pushes that change `site/` trigger the Pages build. Local builds and previews do not publish. The domain remains associated with this Pages project; its proxied CNAME points to `vorkflo-web.pages.dev`. Manage the domain through Pages so Cloudflare provisions its association and TLS. The portfolio at `vrnrn.com` and its article-star Worker are maintained separately in [vrnrn/vrnrn.com](https://github.com/vrnrn/vrnrn.com).
 
 ## Content and assets
 
