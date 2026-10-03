@@ -1,0 +1,14 @@
+{
+  "name": "vorkflo-site",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "node scripts/check.mjs",
+    "dev": "node scripts/dev.mjs",
+    "verify": "npm run build && npm run check"
+  }
+}

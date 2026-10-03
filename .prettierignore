@@ -1,5 +1,6 @@
 node_modules/
 dist/
+.build-site-*/
 out/
 apps/desktop/release/
 coverage/

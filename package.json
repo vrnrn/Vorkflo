@@ -21,7 +21,7 @@
     "format:check": "prettier --check .",
     "test": "npm run test:scripts && npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "verify": "npm run audit:public && npm run format:check && npm run build && npm run typecheck && npm test",
+    "verify": "npm run audit:public && npm run format:check && npm run site:verify && npm run build && npm run typecheck && npm test",
     "package:mac:dir": "npm run build && npm run package:mac:dir --workspace @vorkflo/desktop",
     "package:mac:unsigned": "npm run build && npm run package:mac:unsigned --workspace @vorkflo/desktop",
     "release:mac": "npm run build && npm run release:mac --workspace @vorkflo/desktop",
@@ -30,7 +30,11 @@
     "workflow:check": "npm run build --workspace @vorkflo/engine && node scripts/check-workflow.mjs",
     "workflow:run": "npm run build --workspace @vorkflo/engine && npm run build --workspace @vorkflo/node-runner && node scripts/run-workflow.mjs",
     "audit:public": "node scripts/audit-public.mjs",
-    "test:scripts": "node --test scripts/*.test.mjs"
+    "test:scripts": "node --test scripts/*.test.mjs",
+    "site:build": "npm run build --prefix site",
+    "site:check": "npm run check --prefix site",
+    "site:dev": "npm run dev --prefix site",
+    "site:verify": "npm run verify --prefix site"
   },
   "devDependencies": {
     "@types/node": "22.20.1",

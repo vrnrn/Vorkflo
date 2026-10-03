@@ -91,6 +91,10 @@ and workflows outside the repository.
 
 ## Development
 
+The product website at [vorkflo.vrnrn.com](https://vorkflo.vrnrn.com/) lives in
+[`site/`](site/README.md). Run `npm run site:dev` to preview it, or
+`npm run site:verify` to build and check its standalone Cloudflare Pages output.
+
 | Command                                | Purpose                                                               |
 | -------------------------------------- | --------------------------------------------------------------------- |
 | `npm run verify`                       | Public-source audit, formatting, build, types, and tests              |
