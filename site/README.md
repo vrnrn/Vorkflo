@@ -25,6 +25,8 @@ Cloudflare Pages project **vorkflo-web** connects to **vrnrn/Vorkflo** with:
 
 Production pushes that change `site/` trigger the Pages build. Local builds and previews do not publish. The domain remains associated with this Pages project; its proxied CNAME points to `vorkflo-web.pages.dev`. Manage the domain through Pages so Cloudflare provisions its association and TLS. The portfolio at `vrnrn.com` and its article-star Worker are maintained separately in [vrnrn/vrnrn.com](https://github.com/vrnrn/vrnrn.com).
 
+The former **vorkflo-site** Pages project is retained with automatic deployments disabled for rollback. It no longer owns the custom domain. Its previous deployment remains available at `vorkflo-site.pages.dev`.
+
 ## Content and assets
 
 Product features, requirements, installation details, and license follow this repository. Downloads are pinned to the verified **v0.4.0** DMG. When releasing a new version, update the release badge, both download links, checksum link, version text, and download checks in `site/scripts/check.mjs` together.
