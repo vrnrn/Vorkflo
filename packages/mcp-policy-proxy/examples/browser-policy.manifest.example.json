@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "upstream": {
+    "executable": "/absolute/path/to/browser-mcp",
+    "args": ["--stdio"]
+  },
+  "environment": {
+    "inherit": ["PATH", "HOME"]
+  },
+  "policy": {
+    "allowedTools": ["browser_navigate", "browser_snapshot"],
+    "allowedHttpsOrigins": ["https://example.com"],
+    "maxToolCalls": 20
+  }
+}

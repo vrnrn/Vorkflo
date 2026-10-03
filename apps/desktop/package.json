@@ -1,0 +1,51 @@
+{
+  "name": "@vorkflo/desktop",
+  "version": "0.4.0",
+  "private": true,
+  "description": "Build, run, and inspect visual workflows for local command-line tools.",
+  "author": "Vorkflo contributors",
+  "type": "module",
+  "main": "out/main/index.js",
+  "scripts": {
+    "build:icon": "node scripts/build-macos-icon.mjs",
+    "dev": "electron-vite dev",
+    "build": "node scripts/prepare-runtime-helpers.mjs && electron-vite build",
+    "package:mac:dir": "VORKFLO_UNSIGNED_BUILD=1 CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --config electron-builder.config.cjs --mac dir --publish never",
+    "package:mac:unsigned": "npm run package:mac:unsigned:build && npm run verify:mac:unsigned",
+    "package:mac:unsigned:build": "VORKFLO_UNSIGNED_BUILD=1 CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --config electron-builder.config.cjs --mac dmg zip --publish never",
+    "preview": "electron-vite preview",
+    "release:mac": "npm run release:mac:build && npm run verify:mac:release",
+    "release:mac:build": "npm run release:mac:clean && VORKFLO_UNSIGNED_BUILD=1 CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --config electron-builder.config.cjs --mac dmg zip --arm64 --publish never",
+    "release:mac:clean": "node scripts/clean-macos-release.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "format:check": "prettier --check .",
+    "verify:mac:release": "node scripts/verify-macos-release.mjs --unsigned --architectures=arm64 --write-manifest",
+    "verify:mac:unsigned": "node scripts/verify-macos-release.mjs --unsigned"
+  },
+  "dependencies": {
+    "@vorkflo/engine": "file:../../packages/engine",
+    "@vorkflo/node-runner": "file:../../packages/node-runner",
+    "@xyflow/react": "12.11.2",
+    "lucide-react": "0.468.0",
+    "react": "19.2.7",
+    "react-dom": "19.2.7"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "6.8.0",
+    "@testing-library/react": "16.3.2",
+    "@types/node": "22.20.1",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "@vitejs/plugin-react": "5.2.0",
+    "electron": "43.7.7",
+    "electron-builder": "26.15.3",
+    "electron-vite": "5.0.0",
+    "jsdom": "27.0.0",
+    "prettier": "3.9.5",
+    "typescript": "7.0.2",
+    "vite": "7.3.6",
+    "vitest": "4.1.11"
+  },
+  "license": "MIT"
+}

@@ -1,0 +1,195 @@
+{
+  "schemaVersion": 2,
+  "id": "codex-file-agent",
+  "name": "Codex generated file",
+  "inputs": [
+    {
+      "id": "context",
+      "name": "Context",
+      "artifactKind": "text",
+      "required": true
+    }
+  ],
+  "inputBindings": [
+    {
+      "id": "context-to-agent",
+      "inputId": "context",
+      "to": {
+        "blockId": "codex-agent",
+        "portId": "context"
+      }
+    }
+  ],
+  "blocks": [
+    {
+      "id": "codex-agent",
+      "name": "Generate report",
+      "kind": "process",
+      "inputs": [
+        {
+          "id": "context",
+          "name": "Context",
+          "artifactKind": "text",
+          "required": false
+        }
+      ],
+      "outputs": [
+        {
+          "id": "response",
+          "name": "Response",
+          "artifactKind": "text"
+        },
+        {
+          "id": "report",
+          "name": "Generated report",
+          "artifactKind": "filesystem-reference"
+        }
+      ],
+      "invocation": {
+        "executable": "codex",
+        "arguments": [
+          {
+            "type": "literal",
+            "value": "exec"
+          },
+          {
+            "type": "literal",
+            "value": "--ephemeral"
+          },
+          {
+            "type": "literal",
+            "value": "--skip-git-repo-check"
+          },
+          {
+            "type": "literal",
+            "value": "--sandbox"
+          },
+          {
+            "type": "literal",
+            "value": "workspace-write"
+          },
+          {
+            "type": "literal",
+            "value": "--color"
+          },
+          {
+            "type": "literal",
+            "value": "never"
+          },
+          {
+            "type": "literal",
+            "value": "Create the directory generated and write generated/report.md containing exactly this single line: Vorkflo real Codex acceptance. Do not create or modify any other files. Then respond briefly that the file was created."
+          }
+        ],
+        "environment": {
+          "HOME": {
+            "source": "host",
+            "name": "HOME"
+          },
+          "PATH": {
+            "source": "host",
+            "name": "PATH"
+          }
+        },
+        "stdin": {
+          "portId": "context"
+        },
+        "shell": false,
+        "outputs": [
+          {
+            "type": "stdout",
+            "portId": "response"
+          },
+          {
+            "type": "filesystem",
+            "portId": "report",
+            "path": "./generated/report.md",
+            "entity": "file"
+          }
+        ]
+      }
+    },
+    {
+      "id": "count-report",
+      "name": "Count report bytes",
+      "kind": "process",
+      "inputs": [
+        {
+          "id": "report",
+          "name": "Generated report",
+          "artifactKind": "filesystem-reference",
+          "required": true
+        }
+      ],
+      "outputs": [
+        {
+          "id": "count",
+          "name": "Byte count",
+          "artifactKind": "text"
+        }
+      ],
+      "invocation": {
+        "executable": "wc",
+        "arguments": [
+          {
+            "type": "literal",
+            "value": "-c"
+          },
+          {
+            "type": "input",
+            "portId": "report"
+          }
+        ],
+        "environment": {
+          "PATH": {
+            "source": "host",
+            "name": "PATH"
+          }
+        },
+        "shell": false,
+        "outputs": [
+          {
+            "type": "stdout",
+            "portId": "count"
+          }
+        ]
+      }
+    }
+  ],
+  "connections": [
+    {
+      "id": "report-to-count",
+      "from": {
+        "blockId": "codex-agent",
+        "portId": "report"
+      },
+      "to": {
+        "blockId": "count-report",
+        "portId": "report"
+      }
+    }
+  ],
+  "layout": {
+    "blockPositions": {
+      "codex-agent": {
+        "x": 160,
+        "y": 160
+      },
+      "count-report": {
+        "x": 560,
+        "y": 160
+      }
+    }
+  },
+  "editor": {
+    "vorkflo.desktop": {
+      "schemaVersion": 1,
+      "blockPresentations": {
+        "codex-agent": {
+          "kind": "ai-agent",
+          "agentRuntime": "codex"
+        }
+      }
+    }
+  }
+}

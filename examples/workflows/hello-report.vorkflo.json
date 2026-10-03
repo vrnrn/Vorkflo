@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 1,
+  "id": "hello-report",
+  "name": "Hello report",
+  "blocks": [
+    {
+      "id": "make-data",
+      "name": "Make data",
+      "kind": "process",
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "payload",
+          "name": "Payload",
+          "artifactKind": "json"
+        }
+      ],
+      "invocation": {
+        "executable": "node",
+        "arguments": [
+          {
+            "type": "literal",
+            "value": "-e"
+          },
+          {
+            "type": "literal",
+            "value": "process.stdout.write(JSON.stringify({ greeting: 'Hello', tool: 'Vorkflo' }))"
+          }
+        ],
+        "environment": {
+          "PATH": {
+            "source": "host",
+            "name": "PATH"
+          }
+        },
+        "shell": false,
+        "outputs": [
+          {
+            "type": "stdout",
+            "portId": "payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "format-report",
+      "name": "Format report",
+      "kind": "process",
+      "inputs": [
+        {
+          "id": "payload",
+          "name": "Payload",
+          "artifactKind": "json",
+          "required": true
+        }
+      ],
+      "outputs": [
+        {
+          "id": "report",
+          "name": "Report",
+          "artifactKind": "text"
+        }
+      ],
+      "invocation": {
+        "executable": "node",
+        "arguments": [
+          {
+            "type": "literal",
+            "value": "-e"
+          },
+          {
+            "type": "literal",
+            "value": "let data=''; process.stdin.setEncoding('utf8'); process.stdin.on('data', chunk => data += chunk); process.stdin.on('end', () => { const value = JSON.parse(data); process.stdout.write(`${value.greeting} from ${value.tool}!`); });"
+          }
+        ],
+        "environment": {
+          "PATH": {
+            "source": "host",
+            "name": "PATH"
+          }
+        },
+        "stdin": {
+          "portId": "payload"
+        },
+        "shell": false,
+        "outputs": [
+          {
+            "type": "stdout",
+            "portId": "report"
+          }
+        ]
+      }
+    }
+  ],
+  "connections": [
+    {
+      "id": "data-to-report",
+      "from": {
+        "blockId": "make-data",
+        "portId": "payload"
+      },
+      "to": {
+        "blockId": "format-report",
+        "portId": "payload"
+      }
+    }
+  ],
+  "layout": {
+    "blockPositions": {
+      "make-data": {
+        "x": 80,
+        "y": 120
+      },
+      "format-report": {
+        "x": 440,
+        "y": 120
+      }
+    }
+  }
+}

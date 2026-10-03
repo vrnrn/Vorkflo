@@ -1,0 +1,27 @@
+.DS_Store
+node_modules/
+dist/
+out/
+apps/desktop/release/
+coverage/
+*.log
+page-*.yml
+page-*.png
+element-*.png
+
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+
+# Machine-local workflows, inputs, captures, and release evidence.
+/private/
+.local/
+artifacts/
+*.vorkflo.local.json
+
+# Only the curated synthetic examples are publishable.
+/examples/*
+!/examples/workflows/
+!/examples/inputs/
+apps/desktop/resources/

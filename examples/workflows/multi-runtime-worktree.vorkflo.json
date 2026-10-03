@@ -1,0 +1,210 @@
+{
+  "schemaVersion": 2,
+  "id": "multi-runtime-worktree",
+  "name": "Multi-runtime worktree handoff",
+  "inputs": [],
+  "inputBindings": [],
+  "blocks": [
+    {
+      "id": "codex-draft",
+      "name": "Codex drafts",
+      "kind": "process",
+      "inputs": [],
+      "outputs": [
+        { "id": "response", "name": "Response", "artifactKind": "text" },
+        {
+          "id": "draft",
+          "name": "Draft",
+          "artifactKind": "filesystem-reference"
+        }
+      ],
+      "invocation": {
+        "executable": "codex",
+        "arguments": [
+          { "type": "literal", "value": "exec" },
+          { "type": "literal", "value": "--ephemeral" },
+          { "type": "literal", "value": "--skip-git-repo-check" },
+          { "type": "literal", "value": "--sandbox" },
+          { "type": "literal", "value": "workspace-write" },
+          { "type": "literal", "value": "--color" },
+          { "type": "literal", "value": "never" },
+          {
+            "type": "literal",
+            "value": "Create generated/draft.md with a concise implementation proposal for the repository. Do not commit. Respond with a one-sentence handoff."
+          }
+        ],
+        "environment": {
+          "HOME": { "source": "host", "name": "HOME" },
+          "PATH": { "source": "host", "name": "PATH" }
+        },
+        "shell": false,
+        "outputs": [
+          { "type": "stdout", "portId": "response" },
+          {
+            "type": "filesystem",
+            "portId": "draft",
+            "path": "./generated/draft.md",
+            "entity": "file"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cline-review",
+      "name": "Cline reviews",
+      "kind": "process",
+      "inputs": [
+        {
+          "id": "context",
+          "name": "Codex handoff",
+          "artifactKind": "text",
+          "required": false
+        }
+      ],
+      "outputs": [
+        { "id": "response", "name": "Response", "artifactKind": "text" },
+        {
+          "id": "review",
+          "name": "Reviewed proposal",
+          "artifactKind": "filesystem-reference"
+        }
+      ],
+      "invocation": {
+        "executable": "cline",
+        "arguments": [
+          {
+            "type": "template",
+            "template": "{{instruction}}\n\nConnected context:\n{{context}}",
+            "inputs": {
+              "instruction": {
+                "value": "Review generated/draft.md against the repository, improve it, and write generated/reviewed.md. Do not commit. Respond with a one-sentence handoff."
+              },
+              "context": { "portId": "context" }
+            }
+          }
+        ],
+        "environment": {
+          "HOME": { "source": "host", "name": "HOME" },
+          "PATH": { "source": "host", "name": "PATH" }
+        },
+        "shell": false,
+        "outputs": [
+          { "type": "stdout", "portId": "response" },
+          {
+            "type": "filesystem",
+            "portId": "review",
+            "path": "./generated/reviewed.md",
+            "entity": "file"
+          }
+        ]
+      }
+    },
+    {
+      "id": "antigravity-final",
+      "name": "Antigravity finalizes",
+      "kind": "process",
+      "inputs": [
+        {
+          "id": "context",
+          "name": "Cline handoff",
+          "artifactKind": "text",
+          "required": false
+        }
+      ],
+      "outputs": [
+        { "id": "response", "name": "Response", "artifactKind": "text" },
+        {
+          "id": "final",
+          "name": "Final proposal",
+          "artifactKind": "filesystem-reference"
+        }
+      ],
+      "invocation": {
+        "executable": "agy",
+        "arguments": [
+          { "type": "literal", "value": "--print" },
+          {
+            "type": "template",
+            "template": "{{instruction}}\n\nCline handoff:\n{{context}}",
+            "inputs": {
+              "instruction": {
+                "value": "Inspect generated/reviewed.md, make any final corrections, and write generated/final.md. Do not commit. Respond briefly."
+              },
+              "context": { "portId": "context" }
+            }
+          }
+        ],
+        "environment": {
+          "HOME": { "source": "host", "name": "HOME" },
+          "PATH": { "source": "host", "name": "PATH" }
+        },
+        "shell": false,
+        "outputs": [
+          { "type": "stdout", "portId": "response" },
+          {
+            "type": "filesystem",
+            "portId": "final",
+            "path": "./generated/final.md",
+            "entity": "file"
+          }
+        ]
+      }
+    }
+  ],
+  "connections": [
+    {
+      "id": "codex-to-cline",
+      "from": { "blockId": "codex-draft", "portId": "response" },
+      "to": { "blockId": "cline-review", "portId": "context" }
+    },
+    {
+      "id": "cline-to-antigravity",
+      "from": { "blockId": "cline-review", "portId": "response" },
+      "to": { "blockId": "antigravity-final", "portId": "context" }
+    }
+  ],
+  "layout": {
+    "blockPositions": {
+      "codex-draft": { "x": 120, "y": 180 },
+      "cline-review": { "x": 500, "y": 180 },
+      "antigravity-final": { "x": 880, "y": 180 }
+    }
+  },
+  "editor": {
+    "vorkflo.desktop": {
+      "schemaVersion": 1,
+      "blockPresentations": {
+        "codex-draft": {
+          "kind": "ai-agent",
+          "agentRuntime": "codex",
+          "isolation": {
+            "mode": "workflow-run-worktree",
+            "repositoryRoot": ".",
+            "baseRef": "HEAD",
+            "scope": "shared"
+          }
+        },
+        "cline-review": {
+          "kind": "ai-agent",
+          "agentRuntime": "cline",
+          "isolation": {
+            "mode": "workflow-run-worktree",
+            "repositoryRoot": ".",
+            "baseRef": "HEAD",
+            "scope": "shared"
+          }
+        },
+        "antigravity-final": {
+          "kind": "ai-agent",
+          "agentRuntime": "antigravity",
+          "isolation": {
+            "mode": "workflow-run-worktree",
+            "repositoryRoot": ".",
+            "baseRef": "HEAD",
+            "scope": "shared"
+          }
+        }
+      }
+    }
+  }
+}

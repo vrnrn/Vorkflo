@@ -1,0 +1,292 @@
+{
+  "schemaVersion": 2,
+  "id": "parallel-report",
+  "name": "Parallel report",
+  "inputs": [],
+  "inputBindings": [],
+  "blocks": [
+    {
+      "id": "draft",
+      "name": "Draft report",
+      "kind": "process",
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "text",
+          "name": "Text",
+          "artifactKind": "text"
+        }
+      ],
+      "invocation": {
+        "executable": "/usr/bin/printf",
+        "arguments": [
+          {
+            "type": "literal",
+            "value": "Design. Build. Inspect. Repeat.\n"
+          }
+        ],
+        "environment": {},
+        "shell": false,
+        "outputs": [
+          {
+            "type": "stdout",
+            "portId": "text"
+          }
+        ]
+      }
+    },
+    {
+      "id": "normalize",
+      "name": "Normalize text",
+      "kind": "process",
+      "inputs": [
+        {
+          "id": "source",
+          "name": "Source",
+          "artifactKind": "text",
+          "required": true
+        }
+      ],
+      "outputs": [
+        {
+          "id": "text",
+          "name": "Text",
+          "artifactKind": "text"
+        }
+      ],
+      "invocation": {
+        "executable": "/usr/bin/tr",
+        "arguments": [
+          {
+            "type": "literal",
+            "value": "[:lower:]"
+          },
+          {
+            "type": "literal",
+            "value": "[:upper:]"
+          }
+        ],
+        "environment": {},
+        "stdin": {
+          "portId": "source"
+        },
+        "shell": false,
+        "outputs": [
+          {
+            "type": "stdout",
+            "portId": "text"
+          }
+        ]
+      }
+    },
+    {
+      "id": "count",
+      "name": "Count words",
+      "kind": "process",
+      "inputs": [
+        {
+          "id": "source",
+          "name": "Source",
+          "artifactKind": "text",
+          "required": true
+        }
+      ],
+      "outputs": [
+        {
+          "id": "text",
+          "name": "Text",
+          "artifactKind": "text"
+        }
+      ],
+      "invocation": {
+        "executable": "/usr/bin/wc",
+        "arguments": [
+          {
+            "type": "literal",
+            "value": "-w"
+          }
+        ],
+        "environment": {},
+        "stdin": {
+          "portId": "source"
+        },
+        "shell": false,
+        "outputs": [
+          {
+            "type": "stdout",
+            "portId": "text"
+          }
+        ]
+      }
+    },
+    {
+      "id": "note",
+      "name": "Add a note",
+      "kind": "process",
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "text",
+          "name": "Text",
+          "artifactKind": "text"
+        }
+      ],
+      "invocation": {
+        "executable": "/usr/bin/printf",
+        "arguments": [
+          {
+            "type": "literal",
+            "value": "Generated locally with Vorkflo.\n"
+          }
+        ],
+        "environment": {},
+        "shell": false,
+        "outputs": [
+          {
+            "type": "stdout",
+            "portId": "text"
+          }
+        ]
+      }
+    },
+    {
+      "id": "assemble",
+      "name": "Assemble report",
+      "kind": "process",
+      "inputs": [
+        {
+          "id": "content",
+          "name": "Content",
+          "artifactKind": "text",
+          "required": true
+        },
+        {
+          "id": "count",
+          "name": "Word count",
+          "artifactKind": "text",
+          "required": true
+        },
+        {
+          "id": "note",
+          "name": "Note",
+          "artifactKind": "text",
+          "required": true
+        }
+      ],
+      "outputs": [
+        {
+          "id": "text",
+          "name": "Text",
+          "artifactKind": "text"
+        }
+      ],
+      "invocation": {
+        "executable": "/bin/cat",
+        "arguments": [],
+        "environment": {},
+        "stdin": {
+          "template": "# Example report\n\n{{content}}\nWord count: {{count}}\n{{note}}",
+          "inputs": {
+            "content": {
+              "portId": "content"
+            },
+            "count": {
+              "portId": "count"
+            },
+            "note": {
+              "portId": "note"
+            }
+          }
+        },
+        "shell": false,
+        "outputs": [
+          {
+            "type": "stdout",
+            "portId": "text"
+          }
+        ]
+      }
+    }
+  ],
+  "connections": [
+    {
+      "id": "draft-normalize-source",
+      "from": {
+        "blockId": "draft",
+        "portId": "text"
+      },
+      "to": {
+        "blockId": "normalize",
+        "portId": "source"
+      }
+    },
+    {
+      "id": "draft-count-source",
+      "from": {
+        "blockId": "draft",
+        "portId": "text"
+      },
+      "to": {
+        "blockId": "count",
+        "portId": "source"
+      }
+    },
+    {
+      "id": "normalize-assemble-content",
+      "from": {
+        "blockId": "normalize",
+        "portId": "text"
+      },
+      "to": {
+        "blockId": "assemble",
+        "portId": "content"
+      }
+    },
+    {
+      "id": "count-assemble-count",
+      "from": {
+        "blockId": "count",
+        "portId": "text"
+      },
+      "to": {
+        "blockId": "assemble",
+        "portId": "count"
+      }
+    },
+    {
+      "id": "note-assemble-note",
+      "from": {
+        "blockId": "note",
+        "portId": "text"
+      },
+      "to": {
+        "blockId": "assemble",
+        "portId": "note"
+      }
+    }
+  ],
+  "layout": {
+    "blockPositions": {
+      "draft": {
+        "x": 65,
+        "y": 140
+      },
+      "normalize": {
+        "x": 385,
+        "y": 65
+      },
+      "count": {
+        "x": 385,
+        "y": 310
+      },
+      "note": {
+        "x": 65,
+        "y": 440
+      },
+      "assemble": {
+        "x": 725,
+        "y": 170
+      }
+    }
+  }
+}

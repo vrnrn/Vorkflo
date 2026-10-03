@@ -1,0 +1,52 @@
+{
+  "name": "vorkflo",
+  "version": "0.4.0",
+  "private": true,
+  "description": "Build, run, and inspect visual workflows for local command-line tools.",
+  "engines": {
+    "node": ">=22.12.0",
+    "npm": ">=11.0.0"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "desktop:smoke": "npm run build && node scripts/run-electron-smoke.mjs",
+    "desktop:smoke:packaged": "npm run package:mac:dir && node scripts/run-electron-smoke.mjs --packaged",
+    "desktop:performance:packaged": "npm run package:mac:dir && node scripts/run-electron-smoke.mjs --packaged --performance",
+    "dev": "npm run build && npm run dev --workspace @vorkflo/desktop",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "npm run test:scripts && npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "verify": "npm run audit:public && npm run format:check && npm run build && npm run typecheck && npm test",
+    "package:mac:dir": "npm run build && npm run package:mac:dir --workspace @vorkflo/desktop",
+    "package:mac:unsigned": "npm run build && npm run package:mac:unsigned --workspace @vorkflo/desktop",
+    "release:mac": "npm run build && npm run release:mac --workspace @vorkflo/desktop",
+    "verify:mac:release": "npm run verify:mac:release --workspace @vorkflo/desktop",
+    "verify:mac:unsigned": "npm run verify:mac:unsigned --workspace @vorkflo/desktop",
+    "workflow:check": "npm run build --workspace @vorkflo/engine && node scripts/check-workflow.mjs",
+    "workflow:run": "npm run build --workspace @vorkflo/engine && npm run build --workspace @vorkflo/node-runner && node scripts/run-workflow.mjs",
+    "audit:public": "node scripts/audit-public.mjs",
+    "test:scripts": "node --test scripts/*.test.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.1",
+    "prettier": "3.9.5",
+    "typescript": "7.0.2"
+  },
+  "allowScripts": {
+    "electron@43.7.7": true,
+    "esbuild@0.25.12": true,
+    "fsevents@2.3.3": false,
+    "electron-winstaller@5.4.0": false,
+    "esbuild@0.28.2": true
+  },
+  "license": "MIT",
+  "packageManager": "npm@11.16.0",
+  "overrides": {
+    "@electron/get": "5.1.0"
+  }
+}

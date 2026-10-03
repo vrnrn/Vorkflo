@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "id": "locked-v1-fixture",
+  "name": "Locked v1 fixture",
+  "blocks": [
+    {
+      "id": "source",
+      "name": "Source",
+      "kind": "process",
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "stdout",
+          "name": "stdout",
+          "artifactKind": "text"
+        }
+      ],
+      "invocation": {
+        "executable": "printf",
+        "arguments": [
+          {
+            "type": "literal",
+            "value": "fixture"
+          }
+        ],
+        "environment": {
+          "PATH": {
+            "source": "host",
+            "name": "PATH"
+          }
+        },
+        "shell": false,
+        "outputs": [
+          {
+            "type": "stdout",
+            "portId": "stdout"
+          }
+        ]
+      }
+    }
+  ],
+  "connections": [],
+  "layout": {
+    "blockPositions": {
+      "source": {
+        "x": 120,
+        "y": 80
+      }
+    }
+  }
+}

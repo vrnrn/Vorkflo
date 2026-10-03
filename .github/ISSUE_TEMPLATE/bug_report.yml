@@ -1,0 +1,25 @@
+name: Bug report
+description: Report a reproducible problem using synthetic data.
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description:
+        Include the expected behavior and steps to reproduce. Omit private
+        workflows, credentials, personal paths, and account data.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Vorkflo version and macOS version
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Sanitized evidence
+      description:
+        Include a minimal synthetic workflow or application-only screenshot if
+        useful.
