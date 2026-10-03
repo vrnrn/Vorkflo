@@ -328,69 +328,74 @@ export function RunPreview({
             <X size={17} />
           </button>
         </header>
-        <div className="trust-banner">
-          <AlertTriangle size={18} />
-          <div>
-            <strong>This workflow is executable code.</strong>
-            <p>
-              Processes run locally with your user permissions. Shell blocks can
-              interpret expansion, pipes, redirects, and other shell syntax.
-              Output may contain sensitive data.
-            </p>
+        <div className="run-modal-body">
+          <div className="trust-banner">
+            <AlertTriangle size={18} />
+            <div>
+              <strong>This workflow is executable code.</strong>
+              <p>
+                Processes run locally with your user permissions. Shell blocks
+                can interpret expansion, pipes, redirects, and other shell
+                syntax. Output may contain sensitive data.
+              </p>
+            </div>
           </div>
-        </div>
-        <div className="preview-meta">
-          <span>
-            <GitBranch size={14} /> {workflow.blocks.length} processes
-          </span>
-          <span>
-            <FileInput size={14} /> {workflow.connections.length} artifact
-            routes
-          </span>
-          <span>
-            <Check size={14} /> Manual run
-          </span>
-        </div>
-        <RunInputFields
-          workflow={workflow}
-          values={inputValues}
-          errors={inputErrors}
-          onChange={onInputChange}
-          selectPath={selectPath}
-        />
-        <PreflightPanel
-          {...(preflight === undefined ? {} : { result: preflight })}
-          loading={preflightLoading}
-          onSelectIssue={onSelectIssue}
-        />
-        <div className="command-preview">
-          {workflow.blocks.map((block, index) => (
-            <article
-              key={block.id}
-              className={block.invocation.shell ? 'uses-shell' : ''}
-            >
-              <span className="preview-index">
-                {String(index + 1).padStart(2, '0')}
-              </span>
-              <div>
-                <strong>{block.name}</strong>
-                <RunInvocationPreview
-                  workflow={workflow}
-                  block={block}
-                  {...(preflight?.blocks.find(
-                    (preview) => preview.blockId === block.id,
-                  ) === undefined
-                    ? {}
-                    : {
-                        resolved: preflight.blocks.find(
-                          (preview) => preview.blockId === block.id,
-                        )!,
-                      })}
-                />
-                <AgentIsolationPreview workflow={workflow} blockId={block.id} />
-              </div>
-            </article>
-          ))}
+          <div className="preview-meta">
+            <span>
+              <GitBranch size={14} /> {workflow.blocks.length} processes
+            </span>
+            <span>
+              <FileInput size={14} /> {workflow.connections.length} artifact
+              routes
+            </span>
+            <span>
+              <Check size={14} /> Manual run
+            </span>
+          </div>
+          <RunInputFields
+            workflow={workflow}
+            values={inputValues}
+            errors={inputErrors}
+            onChange={onInputChange}
+            selectPath={selectPath}
+          />
+          <PreflightPanel
+            {...(preflight === undefined ? {} : { result: preflight })}
+            loading={preflightLoading}
+            onSelectIssue={onSelectIssue}
+          />
+          <div className="command-preview">
+            {workflow.blocks.map((block, index) => (
+              <article
+                key={block.id}
+                className={block.invocation.shell ? 'uses-shell' : ''}
+              >
+                <span className="preview-index">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+                <div>
+                  <strong>{block.name}</strong>
+                  <RunInvocationPreview
+                    workflow={workflow}
+                    block={block}
+                    {...(preflight?.blocks.find(
+                      (preview) => preview.blockId === block.id,
+                    ) === undefined
+                      ? {}
+                      : {
+                          resolved: preflight.blocks.find(
+                            (preview) => preview.blockId === block.id,
+                          )!,
+                        })}
+                  />
+                  <AgentIsolationPreview
+                    workflow={workflow}
+                    blockId={block.id}
+                  />
+                </div>
+              </article>
+            ))}
+          </div>
         </div>
         <label className="consent-row">
           <input

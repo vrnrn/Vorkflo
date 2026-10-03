@@ -205,6 +205,51 @@ describe('block configuration ordering', () => {
     expect(container.querySelectorAll('.react-flow__node')).toHaveLength(2);
   });
 
+  it('toggles workspace panels without losing configuration or remounting nodes', () => {
+    const { container, getByRole, getByLabelText } = render(<App />);
+    const library = getByRole('complementary', { name: 'Block library' });
+    const inspector = getByRole('complementary', { name: 'Block inspector' });
+    const node = container.querySelector('.process-node');
+    fireEvent.change(getByLabelText('Display name'), {
+      target: { value: 'My process' },
+    });
+
+    const hideLibrary = getByRole('button', { name: 'Hide block library' });
+    expect(hideLibrary).toHaveAttribute('aria-controls', library.id);
+    fireEvent.click(hideLibrary);
+    expect(library).toHaveAttribute('hidden');
+    expect(getByRole('button', { name: 'Show block library' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+
+    fireEvent.click(getByRole('button', { name: 'Hide inspector' }));
+    expect(inspector).toHaveAttribute('hidden');
+    expect(container.querySelector('.process-node')).toBe(node);
+
+    fireEvent.click(getByRole('button', { name: 'Show block library' }));
+    fireEvent.click(getByRole('button', { name: 'Show inspector' }));
+    expect(library).not.toHaveAttribute('hidden');
+    expect(inspector).not.toHaveAttribute('hidden');
+    expect(getByLabelText('Display name')).toHaveValue('My process');
+    expect(container.querySelector('.process-node')).toBe(node);
+  });
+
+  it('opens a hidden inspector when selecting a node or adding a block', () => {
+    const { container, getByRole } = render(<App />);
+    const inspector = getByRole('complementary', { name: 'Block inspector' });
+    fireEvent.click(getByRole('button', { name: 'Hide inspector' }));
+    fireEvent.click(container.querySelector('.react-flow__node')!);
+    expect(inspector).not.toHaveAttribute('hidden');
+
+    fireEvent.click(getByRole('button', { name: 'Hide inspector' }));
+    fireEvent.click(getByRole('button', { name: 'Add Computer Use' }));
+    expect(inspector).not.toHaveAttribute('hidden');
+    expect(
+      inspector.querySelector('.inspector-header small'),
+    ).toHaveTextContent('COMPUTER USE BLOCK');
+  });
+
   it('auto-arranges only after the explicit accessible action', async () => {
     const { getByLabelText, getByRole } = render(<App />);
     fireEvent.click(getByRole('button', { name: 'Add process' }));

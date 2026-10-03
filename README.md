@@ -15,7 +15,10 @@ processes on a canvas, pass text or files between them, review what will run,
 and watch each step complete. Your workflows, tools, and execution history stay
 local.
 
-![Vorkflo workflow editor](docs/assets/editor.png)
+![Vorkflo workflow editor with a completed parallel report and block inspector](docs/assets/editor.png)
+
+A completed synthetic workflow: parallel branches on the canvas, visible block
+states, and the selected process's configuration in the inspector.
 
 ## What you can do
 
@@ -27,6 +30,8 @@ local.
   DAG. Independent branches can run in parallel.
 - **Inspect every run.** Review inputs, outputs, errors, timing, and
   cancellation. Bounded local history survives application restarts.
+- **Make room for your workflow.** Collapse the block library or inspector, zoom
+  and pan the canvas, or arrange blocks by their dependencies.
 - **Configure Computer Use.** Declare an MCP backend, HTTPS origins, allowed
   tools, a call budget, and a timeout for a generic browser task.
 
@@ -56,6 +61,19 @@ npm run dev
 The starter canvas contains a small, synthetic example. Add a process, configure
 its command, connect compatible ports, then choose **Review & Run**. Review an
 imported workflow as carefully as you would review a script.
+
+## Around the editor
+
+- **Block library:** add a Process, AI Agent, or Computer Use block. Configure
+  workflow inputs and revisit previous runs from the same sidebar.
+- **Canvas:** connect compatible ports, drag blocks to organize the workflow,
+  and use the bottom-left controls to zoom, fit, or auto-arrange. The panel
+  buttons in the canvas header give you more room without losing your edits.
+- **Inspector:** select a block to edit its configuration or switch to **Run
+  details** to inspect its inputs, output, errors, and timing.
+- **Review & Run:** inspect the effective commands, working directories,
+  environment bindings, and preflight results before confirming execution. The
+  review scrolls while its confirmation and run controls stay visible.
 
 ## Examples
 

@@ -70,7 +70,11 @@ function createWindow(): void {
     minWidth: 1080,
     minHeight: 680,
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
-    backgroundColor: '#090b0f',
+    // Center native macOS controls in the renderer's 68px draggable header.
+    ...(process.platform === 'darwin'
+      ? { trafficLightPosition: { x: 14, y: 27 } }
+      : {}),
+    backgroundColor: '#0c0d13',
     show: false,
     webPreferences: {
       preload: join(currentDirectory, '../preload/index.cjs'),
