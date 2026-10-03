@@ -46,11 +46,14 @@ export function RunHistoryPanel({
           <Trash2 size={13} />
         </button>
       </header>
-      <p>
-        Retained locally for up to 30 days within the 100 MiB application limit.
-        Output and paths may be sensitive. Records that own retained worktrees
-        remain until those scopes are safely cleaned.
-      </p>
+      <details className="history-policy">
+        <summary>Stored on this Mac · Output may be sensitive</summary>
+        <p>
+          Retained locally for up to 30 days within the 100 MiB application
+          limit. Output and paths may be sensitive. Records that own retained
+          worktrees remain until those scopes are safely cleaned.
+        </p>
+      </details>
       <div className="run-history-list">
         {records.map((record) => (
           <button

@@ -448,7 +448,10 @@ export function AgentBlockInspector({
               </button>
             </header>
             {contexts.map((context, index) => (
-              <div className="agent-output-row" key={context.portId}>
+              <div
+                className="agent-output-row agent-context-row"
+                key={context.portId}
+              >
                 <input
                   aria-label={
                     contexts.length === 1
@@ -760,7 +763,10 @@ export function AgentBlockInspector({
           produce it; Vorkflo verifies it after a successful run.
         </p>
         {config.filesystemOutputs.map((output, index) => (
-          <div className="agent-output-row" key={output.portId}>
+          <div
+            className="agent-output-row agent-file-output-row"
+            key={output.portId}
+          >
             <FileOutput size={14} />
             <input
               aria-label={`Generated output ${index + 1} name`}

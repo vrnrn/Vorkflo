@@ -79,9 +79,9 @@ await waitFor(
   })()`,
   'persisted node drag',
 );
-assert.match(
-  await evaluate('document.querySelector(".document-title small").innerText'),
-  /•/,
+assert.equal(
+  await evaluate('document.querySelector(".document-state.unsaved") !== null'),
+  true,
 );
 // React Flow suppresses the click immediately following a drag to prevent
 // accidental activation. Let that one-tick guard clear before using the toolbar.

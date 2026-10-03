@@ -47,8 +47,8 @@ export function WorkflowInputsEditor({
         </button>
       </header>
       <p className="section-note">
-        Values are requested for each manual run. Defaults are portable
-        literals; do not store secrets here.
+        Supply values at run time. Defaults travel with the workflow; never
+        store secrets here.
       </p>
       {workflow.inputs.map((input) => {
         const binding = workflow.inputBindings.find(

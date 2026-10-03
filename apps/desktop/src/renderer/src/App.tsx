@@ -43,6 +43,8 @@ import {
   LoaderCircle,
   MonitorUp,
   Network,
+  PanelLeft,
+  PanelRight,
   PanelRightClose,
   Play,
   Plus,
@@ -170,6 +172,8 @@ export function App() {
     AgentBlockPresentation | ComputerUseBlockPresentation
   >();
   const [inspectorTab, setInspectorTab] = useState<InspectorTab>('configure');
+  const [libraryVisible, setLibraryVisible] = useState(true);
+  const [inspectorVisible, setInspectorVisible] = useState(true);
   const [snapshots, setSnapshots] = useState<
     Readonly<Record<string, BlockRunSnapshot>>
   >({});
@@ -194,6 +198,30 @@ export function App() {
   const [notice, setNotice] = useState<string | undefined>(
     recoveredDraft === undefined ? undefined : 'Recovered unsaved draft.',
   );
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (canvas === null) return;
+    let previousSize: { width: number; height: number } | undefined;
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry === undefined) return;
+      const { width, height } = entry.contentRect;
+      const instance = reactFlowInstanceRef.current;
+      if (previousSize !== undefined && instance !== null) {
+        // Keep the same graph point centered when panels or the window resize.
+        // Preserve the user's zoom and layout instead of arranging the graph.
+        const viewport = instance.getViewport();
+        void instance.setViewport({
+          ...viewport,
+          x: viewport.x + (width - previousSize.width) / 2,
+          y: viewport.y + (height - previousSize.height) / 2,
+        });
+      }
+      previousSize = { width, height };
+    });
+    observer.observe(canvas);
+    return () => observer.disconnect();
+  }, []);
 
   const validation = useMemo(() => validateWorkflow(workflow), [workflow]);
   const selectedBlock = workflow.blocks.find(
@@ -720,6 +748,7 @@ export function App() {
       },
     }));
     setSelectedBlockId(block.id);
+    setInspectorVisible(true);
     setInspectorTab('configure');
   };
 
@@ -759,6 +788,7 @@ export function App() {
       ),
     );
     setSelectedBlockId(block.id);
+    setInspectorVisible(true);
     setInspectorTab('configure');
   };
 
@@ -791,6 +821,7 @@ export function App() {
       ),
     );
     setSelectedBlockId(id);
+    setInspectorVisible(true);
     setInspectorTab('configure');
   };
 
@@ -928,7 +959,7 @@ export function App() {
           <div className="brand-mark">
             <Layers3 size={18} />
           </div>
-          <span>VORKFLO</span>
+          <span>Vorkflo</span>
           <em>v{__VORKFLO_VERSION__}</em>
         </div>
         <div className="document-title">
@@ -942,9 +973,11 @@ export function App() {
               }))
             }
           />
-          <small>
-            {filePath ?? 'Not saved'}
-            {dirty ? '  •' : ''}
+          <small title={filePath}>
+            <span className={`document-state ${dirty ? 'unsaved' : ''}`} />
+            {filePath === undefined
+              ? 'Unsaved workflow'
+              : `${fileName(filePath)}${dirty ? ' · Unsaved changes' : ' · Saved'}`}
           </small>
         </div>
         <div className="toolbar">
@@ -1005,8 +1038,20 @@ export function App() {
         </div>
       </header>
 
-      <section className="workspace">
-        <aside className="rail">
+      <section
+        className={`workspace ${libraryVisible ? '' : 'library-hidden'} ${inspectorVisible ? '' : 'inspector-hidden'}`}
+      >
+        <aside
+          id="block-library"
+          className="rail"
+          aria-label="Block library"
+          hidden={!libraryVisible}
+        >
+          <div className="library-header">
+            <small>BLOCK LIBRARY</small>
+            <h1>Make it flow.</h1>
+            <p>Add a block. Connect your tools.</p>
+          </div>
           <button
             className="add-process"
             aria-label="Add process"
@@ -1031,12 +1076,12 @@ export function App() {
             </span>
             <span>
               <strong>AI Agent</strong>
-              <small>Codex Agent runtime</small>
+              <small>Your local AI tools</small>
             </span>
             <Plus size={15} />
           </button>
           <button
-            className="add-process add-agent"
+            className="add-process add-computer-use"
             aria-label="Add Computer Use"
             onClick={addComputerUseBlock}
           >
@@ -1045,15 +1090,21 @@ export function App() {
             </span>
             <span>
               <strong>Computer Use</strong>
-              <small>Codex + bounded browser MCP</small>
+              <small>Bounded browser automation</small>
             </span>
             <Plus size={15} />
           </button>
           <div className="rail-heading">WORKFLOW</div>
           <div className="workflow-stat">
             <GitBranch size={15} />
-            <span>{workflow.blocks.length} blocks</span>
-            <span>{workflow.connections.length} links</span>
+            <span>
+              {workflow.blocks.length}{' '}
+              {workflow.blocks.length === 1 ? 'block' : 'blocks'}
+            </span>
+            <span>
+              {workflow.connections.length}{' '}
+              {workflow.connections.length === 1 ? 'link' : 'links'}
+            </span>
           </div>
           <div
             className={`validation-summary ${validation.valid ? 'valid' : 'invalid'}`}
@@ -1066,12 +1117,12 @@ export function App() {
             <div>
               <strong>
                 {validation.valid
-                  ? 'Ready to run'
+                  ? 'Graph is valid'
                   : `${validation.issues.length} issue${validation.issues.length === 1 ? '' : 's'}`}
               </strong>
               <small>
                 {validation.valid
-                  ? 'Valid acyclic workflow'
+                  ? 'Review your commands before running'
                   : 'Execution is blocked'}
               </small>
             </div>
@@ -1114,6 +1165,7 @@ export function App() {
                 record.blocks.find((block) => block.state === 'failed') ??
                 record.blocks[0];
               if (focusBlock !== undefined) {
+                setInspectorVisible(true);
                 setSelectedBlockId(focusBlock.blockId);
                 setInspectorTab('run');
               }
@@ -1146,10 +1198,39 @@ export function App() {
           aria-label="Workflow canvas"
           onPointerMove={onCanvasPointerMove}
         >
-          <div className="canvas-label">
-            <span>CANVAS</span>
-            <ChevronRight size={12} />
-            <span>{workflow.name}</span>
+          <div className="canvas-toolbar">
+            <button
+              className="icon-button panel-toggle"
+              aria-label={
+                libraryVisible ? 'Hide block library' : 'Show block library'
+              }
+              aria-expanded={libraryVisible}
+              aria-controls="block-library"
+              title={
+                libraryVisible ? 'Hide block library' : 'Show block library'
+              }
+              onClick={() => setLibraryVisible((visible) => !visible)}
+            >
+              <PanelLeft size={17} />
+            </button>
+            <div className="canvas-label">
+              <Network size={14} />
+              <span>Workflow</span>
+              <ChevronRight size={12} />
+              <span>{workflow.name}</span>
+            </div>
+            <button
+              className="icon-button panel-toggle"
+              aria-label={
+                inspectorVisible ? 'Hide inspector' : 'Show inspector'
+              }
+              aria-expanded={inspectorVisible}
+              aria-controls="block-inspector"
+              title={inspectorVisible ? 'Hide inspector' : 'Show inspector'}
+              onClick={() => setInspectorVisible((visible) => !visible)}
+            >
+              <PanelRight size={17} />
+            </button>
           </div>
           <ProcessNodeActionsProvider value={nodeActions}>
             <ReactFlow
@@ -1166,7 +1247,10 @@ export function App() {
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
               onPaneClick={() => setSelectedBlockId('')}
-              onNodeClick={(_, node) => setSelectedBlockId(node.id)}
+              onNodeClick={(_, node) => {
+                setSelectedBlockId(node.id);
+                setInspectorVisible(true);
+              }}
               fitView
               fitViewOptions={{ padding: 0.28, maxZoom: 1 }}
               minZoom={0.25}
@@ -1177,16 +1261,16 @@ export function App() {
             >
               <Background
                 variant={BackgroundVariant.Dots}
-                gap={18}
-                size={1.2}
-                color="#252a33"
+                gap={24}
+                size={1}
+                color="#30323e"
               />
               <MiniMap
                 className="minimap"
                 pannable
                 zoomable
-                maskColor="rgba(8, 10, 14, .45)"
-                nodeStrokeColor="#929dab"
+                maskColor="rgba(12, 13, 19, .65)"
+                nodeStrokeColor="#b8b2ce"
                 nodeStrokeWidth={1.5}
                 nodeColor={(node) =>
                   statusColor(snapshots[node.id]?.state ?? 'idle')
@@ -1221,9 +1305,17 @@ export function App() {
               </button>
             </div>
           )}
+          <div className="canvas-hint" aria-hidden="true">
+            Drag to connect <span>·</span> Scroll to zoom
+          </div>
         </section>
 
-        <aside className="inspector">
+        <aside
+          id="block-inspector"
+          className="inspector"
+          aria-label="Block inspector"
+          hidden={!inspectorVisible}
+        >
           {selectedBlock === undefined ? (
             <div className="no-selection">
               <PanelRightClose size={24} />
@@ -1237,9 +1329,11 @@ export function App() {
               <div className="inspector-header">
                 <div>
                   <small>
-                    {selectedPresentation === undefined
-                      ? 'PROCESS BLOCK'
-                      : 'AI AGENT BLOCK'}
+                    {selectedComputerUsePresentation !== undefined
+                      ? 'COMPUTER USE BLOCK'
+                      : selectedPresentation === undefined
+                        ? 'PROCESS BLOCK'
+                        : 'AI AGENT BLOCK'}
                   </small>
                   <strong>{selectedBlock.name}</strong>
                 </div>
@@ -1452,7 +1546,7 @@ export function App() {
             ? 'Execution active'
             : runOutcome
               ? `Last run: ${runOutcome}`
-              : 'Idle'}
+              : 'Ready when you are'}
         </span>
         {notice && (
           <span className="notice" role="status" aria-live="polite">
@@ -1460,8 +1554,10 @@ export function App() {
           </span>
         )}
         <span className="status-spacer" />
-        <span>Schema v{workflow.schemaVersion}</span>
-        <span>Local execution</span>
+        <span className="status-schema">Schema v{workflow.schemaVersion}</span>
+        <span className="local-status">
+          <span className="status-led" /> Local execution
+        </span>
       </footer>
 
       {runPreviewOpen && (
@@ -1544,6 +1640,7 @@ export function App() {
   }
 
   function navigateToInspectorField(blockId: string, field: string): void {
+    setInspectorVisible(true);
     setSelectedBlockId(blockId);
     setInspectorTab('configure');
     setInspectorFocusRequest({ blockId, field, nonce: Date.now() });

@@ -87,7 +87,7 @@ export const ProcessNode = memo(function ProcessNode({
         </button>
       </NodeToolbar>
       <article
-        className={`process-node state-${status} ${selected ? 'selected' : ''}`}
+        className={`process-node kind-${presentationKind ?? (agentRuntime === undefined ? 'process' : 'agent')} state-${status} ${selected ? 'selected' : ''}`}
         aria-label={`${blockType} ${block.name}, ${status}`}
       >
         <div className="node-accent" />
@@ -101,7 +101,12 @@ export const ProcessNode = memo(function ProcessNode({
               <Bot size={14} />
             )}
           </span>
-          <span className="node-title">{block.name}</span>
+          <div className="node-heading">
+            <small>{blockType}</small>
+            <span className="node-title" title={block.name}>
+              {block.name}
+            </span>
+          </div>
           <span
             className={`status-dot ${status}`}
             title={status}
@@ -151,6 +156,10 @@ export const ProcessNode = memo(function ProcessNode({
             <Box size={13} /> No ports
           </div>
         )}
+        <footer className={`node-state ${status}`}>
+          <span className={`status-dot ${status}`} aria-hidden="true" />
+          {status === 'idle' ? 'Not run yet' : status}
+        </footer>
       </article>
     </>
   );
