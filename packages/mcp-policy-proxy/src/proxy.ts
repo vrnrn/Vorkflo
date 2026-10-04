@@ -78,6 +78,7 @@ export class McpPolicyProxy {
   #child: ChildProcessWithoutNullStreams | undefined;
   #stopping: Promise<void> | undefined;
   #removeSignalHandlers: (() => void) | undefined;
+  #closed = false;
 
   constructor(
     manifest: McpPolicyProxyManifest,
@@ -96,6 +97,7 @@ export class McpPolicyProxy {
 
   start(): Promise<number | null> {
     if (this.#child !== undefined) throw new Error('Proxy already started');
+    if (this.#stopping !== undefined) throw new Error('Proxy already stopped');
     const env: NodeJS.ProcessEnv = {};
     for (const name of this.#manifest.environment.inherit) {
       const value = this.#parentEnvironment[name];
@@ -116,6 +118,9 @@ export class McpPolicyProxy {
     );
     this.#child = child;
     child.stderr.resume();
+    // A backend may exit before consuming a pending request. Its process error
+    // or exit is authoritative; EPIPE must not crash the proxy independently.
+    child.stdin.on('error', () => undefined);
 
     const clientLines = createInterface({ input: this.#input });
     const upstreamLines = createInterface({ input: child.stdout });
@@ -165,16 +170,17 @@ export class McpPolicyProxy {
       child.stdin.write(`${line}\n`);
     });
     upstreamLines.on('line', (line) => this.#output.write(`${line}\n`));
-    this.#input.once('end', () => void this.stop());
-    this.#input.once('close', () => void this.stop());
-
     const stop = (): void => void this.stop();
+    this.#input.once('end', stop);
+    this.#input.once('close', stop);
     const killOnExit = (): void => this.#killGroup('SIGTERM');
     process.once('SIGINT', stop);
     process.once('SIGTERM', stop);
     process.once('SIGHUP', stop);
     process.once('exit', killOnExit);
     this.#removeSignalHandlers = () => {
+      this.#input.removeListener('end', stop);
+      this.#input.removeListener('close', stop);
       process.removeListener('SIGINT', stop);
       process.removeListener('SIGTERM', stop);
       process.removeListener('SIGHUP', stop);
@@ -182,12 +188,19 @@ export class McpPolicyProxy {
     };
 
     return new Promise((resolve, reject) => {
-      child.once('error', reject);
-      child.once('exit', (code) => {
+      const cleanup = (): void => {
+        this.#closed = true;
         clientLines.close();
         upstreamLines.close();
         this.#removeSignalHandlers?.();
         this.#removeSignalHandlers = undefined;
+      };
+      child.once('error', (error) => {
+        cleanup();
+        reject(error);
+      });
+      child.once('exit', (code) => {
+        cleanup();
         resolve(code);
       });
     });
@@ -201,7 +214,13 @@ export class McpPolicyProxy {
 
   async #terminateUpstream(): Promise<void> {
     const child = this.#child;
-    if (child === undefined || child.exitCode !== null) return;
+    if (
+      child === undefined ||
+      this.#closed ||
+      child.exitCode !== null ||
+      child.signalCode !== null
+    )
+      return;
     child.stdin.end();
     const exited = new Promise<void>((resolve) =>
       child.once('exit', () => resolve()),

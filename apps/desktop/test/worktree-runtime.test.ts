@@ -106,6 +106,19 @@ describe('desktop worktree runtime', () => {
     expect(inspection.diff).not.toContain('must-not-be-read');
   });
 
+  it('recognizes filenames beginning with two dots as children of the scope', async () => {
+    const fixture = await repository();
+    const runtime = fixedRuntime();
+    const scope = await createScope(runtime, fixture);
+    const output = join(scope.worktreePath, '..report.txt');
+    await writeFile(output, 'retained evidence\n');
+    expect((await runtime.inspect(scope)).diff).toContain('+retained evidence');
+    await rm(output);
+    await expect(
+      runtime.cleanup(scope, { retainedArtifactPaths: [output] }),
+    ).rejects.toMatchObject({ code: 'cleanup-artifact-dependency' });
+  });
+
   it('retains committed changes even when porcelain status is clean', async () => {
     const fixture = await repository();
     const runtime = fixedRuntime();

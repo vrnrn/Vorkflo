@@ -223,6 +223,7 @@ export function RunInspector({
 }
 
 export function RunPreview({
+  starting = false,
   workflow,
   valid,
   inputValues,
@@ -237,6 +238,7 @@ export function RunPreview({
   onClose,
   onRun,
 }: {
+  starting?: boolean;
   workflow: WorkflowDefinition;
   valid: boolean;
   inputValues: Readonly<Record<string, string>>;
@@ -323,6 +325,7 @@ export function RunPreview({
             ref={closeButtonRef}
             className="icon-button"
             aria-label="Close run review"
+            disabled={starting}
             onClick={onClose}
           >
             <X size={17} />
@@ -412,15 +415,20 @@ export function RunPreview({
           </span>
         </label>
         <footer>
-          <button className="button" onClick={onClose}>
+          <button className="button" disabled={starting} onClick={onClose}>
             Cancel
           </button>
           <button
             className="button primary"
-            disabled={!valid || !trustConfirmed}
+            disabled={!valid || !trustConfirmed || preflightLoading || starting}
             onClick={onRun}
           >
-            <Play size={15} fill="currentColor" /> Run workflow
+            {starting ? (
+              <LoaderCircle size={15} className="spin" />
+            ) : (
+              <Play size={15} fill="currentColor" />
+            )}
+            {starting ? 'Starting workflow…' : 'Run workflow'}
           </button>
         </footer>
       </section>

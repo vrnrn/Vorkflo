@@ -76,6 +76,27 @@ describe('generic Computer Use contract', () => {
     expect(block.outputs).toHaveLength(2);
   });
 
+  it('passes canonical HTTPS origins to the policy proxy', () => {
+    const block = compileComputerUseBlock({
+      ...config(),
+      allowedOrigins: ['https://EXAMPLE.com:443/'],
+    });
+    const argument = block.invocation.arguments.find(
+      (arg) =>
+        arg.type === 'literal' &&
+        arg.value.startsWith('mcp_servers.browser.args='),
+    );
+    expect(argument?.type).toBe('literal');
+    if (argument?.type !== 'literal')
+      throw new Error('Missing proxy arguments');
+    const args: string[] = JSON.parse(
+      argument.value.slice(argument.value.indexOf('=') + 1),
+    );
+    expect(args[args.indexOf('--allowed-origin') + 1]).toBe(
+      'https://example.com',
+    );
+  });
+
   it('round trips generic metadata and reports unsupported saved presets', () => {
     const value = config();
     const workflow = setComputerUseBlockPresentation(
@@ -119,6 +140,7 @@ describe('generic Computer Use contract', () => {
     [{ allowedTools: ['tool with spaces'] }, /identifiers/],
     [{ actionBudget: 0 }, /positive action budget/],
     [{ timeoutMs: 0 }, /positive process timeout/],
+    [{ timeoutMs: 2_147_483_648 }, /no greater than/],
     [{ reportPath: './report.json' }, /\.md/],
     [{ reportPortId: 'screenshot' }, /reserved/],
     [{ screenshotPath: './computer-use-report.md' }, /different/],

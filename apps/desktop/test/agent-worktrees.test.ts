@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ProcessRunner } from '@vorkflo/engine';
 import {
   applyAgentWorktreePreviews,
@@ -34,6 +34,78 @@ afterEach(async () => {
 });
 
 describe('Agent worktree coordinator', () => {
+  it('rejects missing run inputs before inspecting or creating worktrees', async () => {
+    const runtime = new WorktreeRuntime();
+    const preflight = vi.spyOn(runtime, 'preflight');
+    const create = vi.spyOn(runtime, 'create');
+    const block = agent('agent', 'codex');
+    const workflow = setAgentBlockPresentation(
+      {
+        ...createWorkflow(),
+        blocks: [block],
+        inputs: [
+          { id: 'task', name: 'Task', artifactKind: 'text', required: true },
+        ],
+      },
+      block.id,
+      'codex',
+      {
+        mode: 'workflow-run-worktree',
+        repositoryRoot: '/tmp/not-inspected',
+        baseRef: 'HEAD',
+        scope: 'task',
+      },
+    );
+    await expect(
+      prepareAgentWorktrees(workflow, {
+        runId: 'invalid-inputs',
+        storageRoot: '/tmp/not-created',
+        runtime,
+      }),
+    ).rejects.toThrow('Workflow run inputs are invalid');
+    expect(preflight).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('reports the blocker when an earlier scope only has a warning', async () => {
+    const runtime = new WorktreeRuntime();
+    vi.spyOn(runtime, 'preflight')
+      .mockImplementationOnce(async (request) => ({
+        repositoryRoot: request.repositoryPath,
+        requestedBaseRef: request.baseRef,
+        baseCommit: 'base',
+        sourceStatus: '',
+        sourceIsDirty: false,
+        runId: request.runId,
+        scopeId: request.scopeId,
+        branchName: 'vorkflo/test',
+        worktreePath: '/tmp/test-scope',
+        participants: [],
+      }))
+      .mockRejectedValueOnce(new Error('Second scope cannot be resolved.'));
+    const create = vi.spyOn(runtime, 'create');
+    let workflow = {
+      ...createWorkflow(),
+      blocks: [agent('first', 'codex'), agent('second', 'codex')],
+    };
+    for (const block of workflow.blocks) {
+      workflow = setAgentBlockPresentation(workflow, block.id, 'codex', {
+        mode: 'workflow-run-worktree',
+        repositoryRoot: '/tmp/not-inspected',
+        baseRef: 'HEAD',
+        scope: block.id,
+      });
+    }
+    await expect(
+      prepareAgentWorktrees(workflow, {
+        runId: 'mixed-issues',
+        storageRoot: '/tmp/not-created',
+        runtime,
+      }),
+    ).rejects.toThrow('Second scope cannot be resolved.');
+    expect(create).not.toHaveBeenCalled();
+  });
+
   it('creates one shared scope and rewrites ordered Agent working directories', async () => {
     const fixture = await repository();
     const first = agent('first', 'codex', 'workspace-write');

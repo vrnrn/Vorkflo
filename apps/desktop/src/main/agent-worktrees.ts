@@ -1,8 +1,10 @@
 import { isAbsolute, resolve } from 'node:path';
-import type {
-  BlockPreflightPreview,
-  PreflightIssue,
-  WorkflowDefinition,
+import {
+  resolveWorkflowRunInputValues,
+  type WorkflowRunInputs,
+  type BlockPreflightPreview,
+  type PreflightIssue,
+  type WorkflowDefinition,
 } from '@vorkflo/engine';
 import {
   alignAgentRuntimeWorkingDirectories,
@@ -27,6 +29,7 @@ export interface AgentWorktreeOptions {
   readonly storageRoot: string;
   readonly baseDirectory?: string;
   readonly runtime?: WorktreeRuntime;
+  readonly runInputs?: WorkflowRunInputs;
 }
 
 export interface AgentWorktreePreflightResult {
@@ -183,16 +186,20 @@ export async function prepareAgentWorktrees(
   workflow: WorkflowDefinition,
   options: AgentWorktreeOptions,
 ): Promise<PreparedAgentWorktrees> {
+  // Reject invalid inputs before creating run-owned branches or directories.
+  resolveWorkflowRunInputValues(workflow, options.runInputs ?? {});
   const runtime = options.runtime ?? new WorktreeRuntime();
   const preflight = await preflightAgentWorktrees(workflow, {
     ...options,
     runtime,
   });
-  if (preflight.issues.some((issue) => issue.severity === 'blocker')) {
-    const first = preflight.issues[0]!;
+  const blocker = preflight.issues.find(
+    (issue) => issue.severity === 'blocker',
+  );
+  if (blocker !== undefined) {
     throw new WorktreeRuntimeError(
       'scope-invalid',
-      first.message,
+      blocker.message,
       'Resolve the worktree preflight issue and retry the workflow.',
     );
   }

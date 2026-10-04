@@ -87,7 +87,8 @@ export async function finalizeMarkdownPngReference(
       throw error;
     }
   }
-  const relativeReference = `![${reference.alt}](./${basename(renderedImagePath)})`;
+  const destination = `./${basename(renderedImagePath)}`;
+  const relativeReference = `![${reference.alt}](${/[\s()]/u.test(destination) ? `<${destination}>` : destination})`;
   const output = markdown.replace(reference.full, relativeReference);
   const temporaryPath = join(
     dirname(resolvedReportPath),

@@ -117,10 +117,12 @@ export function buildWorkflowRunInputs(
   readonly inputs: WorkflowRunInputs;
   readonly errors: Readonly<Record<string, string>>;
 } {
-  const inputs: WorkflowRunInputs = {};
-  const errors: Record<string, string> = {};
+  const inputs: WorkflowRunInputs = Object.create(null);
+  const errors: Record<string, string> = Object.create(null);
   for (const definition of workflow.inputs) {
-    const serialized = serializedValues[definition.id];
+    const serialized = Object.hasOwn(serializedValues, definition.id)
+      ? serializedValues[definition.id]
+      : undefined;
     if (serialized === undefined || serialized === '') {
       if (definition.defaultValue === undefined && definition.required) {
         errors[definition.id] = 'A value is required.';
@@ -141,7 +143,8 @@ export function buildWorkflowRunInputs(
   if (Object.keys(errors).length === 0) {
     const validation = validateWorkflowRunInputs(workflow, inputs);
     for (const issue of validation.issues) {
-      const inputId = /runInputs\.([^.[\]]+)/.exec(issue.path)?.[1];
+      const inputId =
+        issue.inputId ?? /runInputs\.([^.[\]]+)/.exec(issue.path)?.[1];
       if (inputId !== undefined) errors[inputId] = issue.message;
     }
   }

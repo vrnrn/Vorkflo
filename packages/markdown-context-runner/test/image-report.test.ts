@@ -57,3 +57,19 @@ test('rejects mismatched references and non-PNG image bytes', async () => {
     /not a valid PNG/u,
   );
 });
+
+test('keeps spaces and parentheses in portable image destinations', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'vorkflo-local-image-'));
+  const reportPath = join(directory, 'report.md');
+  const imagePath = join(directory, 'evidence (1).png');
+  await writeFile(imagePath, pngFixture);
+  await writeFile(
+    reportPath,
+    `## Evidence image\n![Evidence](<${imagePath}>)\n`,
+  );
+  await finalizeMarkdownPngReference(reportPath, imagePath, 'Evidence');
+  assert.equal(
+    await readFile(reportPath, 'utf8'),
+    '## Evidence image\n![Evidence](<./evidence (1).png>)\n',
+  );
+});

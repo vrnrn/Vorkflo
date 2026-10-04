@@ -105,6 +105,47 @@ test('forwards allowed navigation to an allowed HTTPS origin', async () => {
   });
 });
 
+test('cleans up listeners when the upstream cannot launch', async () => {
+  const input = new PassThrough();
+  const output = new PassThrough();
+  const signals = ['SIGINT', 'SIGTERM', 'SIGHUP', 'exit'] as const;
+  const counts = signals.map((signal) => process.listenerCount(signal));
+  const proxy = new McpPolicyProxy(
+    {
+      ...manifest(),
+      upstream: { executable: '/missing-vorkflo-test/upstream', args: [] },
+    },
+    { input, output },
+  );
+  await assert.rejects(proxy.start(), /ENOENT/);
+  await proxy.stop();
+  assert.deepEqual(
+    signals.map((signal) => process.listenerCount(signal)),
+    counts,
+  );
+  assert.equal(input.listenerCount('end'), 0);
+  assert.equal(input.listenerCount('close'), 0);
+});
+
+test(
+  'stop settles after an upstream already exited by signal',
+  { skip: process.platform === 'win32', timeout: 5_000 },
+  async () => {
+    const proxy = new McpPolicyProxy(
+      {
+        ...manifest(),
+        upstream: {
+          executable: process.execPath,
+          args: ['-e', 'process.kill(process.pid, "SIGTERM")'],
+        },
+      },
+      { input: new PassThrough(), output: new PassThrough() },
+    );
+    assert.equal(await proxy.start(), null);
+    await proxy.stop();
+  },
+);
+
 test('denies disallowed origins without forwarding', async () => {
   await withProxy(manifest(), async (input, output) => {
     const response = nextMessage(output);

@@ -178,7 +178,10 @@ export function compileComputerUseBlock(
 function computerUseArguments(
   config: ComputerUseBlockConfig,
 ): ProcessArgument[] {
-  const origins = config.allowedOrigins.join(', ');
+  const allowedOrigins = config.allowedOrigins.map((value) =>
+    parseOrigin(value, 'allowed origin'),
+  );
+  const origins = allowedOrigins.join(', ');
   const codexArguments: ProcessArgument[] = [
     literal('exec'),
     literal('--ephemeral'),
@@ -203,10 +206,7 @@ function computerUseArguments(
         config.mcpPolicyProxyScript,
         '--config',
         config.mcpPolicyManifestPath,
-        ...config.allowedOrigins.flatMap((origin) => [
-          '--allowed-origin',
-          origin,
-        ]),
+        ...allowedOrigins.flatMap((origin) => ['--allowed-origin', origin]),
         ...config.allowedTools.flatMap((tool) => ['--allowed-tool', tool]),
         '--max-actions',
         String(config.actionBudget),
@@ -382,8 +382,14 @@ export function assertComputerUseConfig(config: ComputerUseBlockConfig): void {
   if (!Number.isSafeInteger(config.actionBudget) || config.actionBudget < 1) {
     throw new Error('Computer Use requires a positive action budget.');
   }
-  if (!Number.isSafeInteger(config.timeoutMs) || config.timeoutMs < 1) {
-    throw new Error('Computer Use requires a positive process timeout.');
+  if (
+    !Number.isSafeInteger(config.timeoutMs) ||
+    config.timeoutMs < 1 ||
+    config.timeoutMs > 2_147_483_647
+  ) {
+    throw new Error(
+      'Computer Use requires a positive process timeout no greater than 2147483647 ms.',
+    );
   }
   const start = parseHttpUrl(config.startUrl, 'start URL');
   if (config.allowedOrigins.length === 0) {

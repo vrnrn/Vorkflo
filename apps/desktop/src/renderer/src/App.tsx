@@ -178,6 +178,16 @@ export function App() {
     Readonly<Record<string, BlockRunSnapshot>>
   >({});
   const [activeRunId, setActiveRunId] = useState<string>();
+  const activeRunIdRef = useRef<string | undefined>(undefined);
+  const startingRunRef = useRef(false);
+  const [startingRun, setStartingRun] = useState(false);
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
+  const historyRequestRef = useRef(0);
+  const currentWorkflowRef = useRef(workflow);
+  currentWorkflowRef.current = workflow;
+  const fileActionsRef = useRef({ saveWorkflow, openWorkflow });
+  fileActionsRef.current = { saveWorkflow, openWorkflow };
   const [runOutcome, setRunOutcome] = useState<
     'succeeded' | 'failed' | 'cancelled'
   >();
@@ -247,7 +257,8 @@ export function App() {
     () => buildWorkflowRunInputs(workflow, runInputValues),
     [runInputValues, workflow],
   );
-  const isRunning = activeRunId !== undefined && runOutcome === undefined;
+  const isRunning =
+    startingRun || (activeRunId !== undefined && runOutcome === undefined);
   const canUndo = history.past.length > 0;
   const canRedo = history.future.length > 0;
 
@@ -275,10 +286,22 @@ export function App() {
   }, []);
 
   const refreshRunHistory = useCallback(async (): Promise<void> => {
+    const request = ++historyRequestRef.current;
     try {
-      setRunHistory(await window.vorkflo.listRunHistory(workflow.id));
+      const records = await window.vorkflo.listRunHistory(workflow.id);
+      if (
+        request === historyRequestRef.current &&
+        currentWorkflowRef.current.id === workflow.id
+      ) {
+        setRunHistory(records);
+      }
     } catch (error) {
-      setNotice(`Could not load run history: ${errorMessage(error)}`);
+      if (
+        request === historyRequestRef.current &&
+        currentWorkflowRef.current.id === workflow.id
+      ) {
+        setNotice(`Could not load run history: ${errorMessage(error)}`);
+      }
     }
   }, [workflow.id]);
 
@@ -450,6 +473,7 @@ export function App() {
   useEffect(() => {
     return window.vorkflo.onRunEvent((event: DesktopRunEvent) => {
       if (event.type === 'run_started') {
+        activeRunIdRef.current = event.runId;
         setActiveRunId(event.runId);
         setRunOutcome(undefined);
         setSnapshots(
@@ -458,6 +482,7 @@ export function App() {
           ),
         );
       }
+      if (event.runId !== activeRunIdRef.current) return;
       if (event.type === 'block_updated') {
         setSnapshots((current) => ({
           ...current,
@@ -557,6 +582,7 @@ export function App() {
 
   useEffect(() => {
     const keyDown = (event: KeyboardEvent): void => {
+      if (event.defaultPrevented || runPreviewOpen) return;
       if (!(event.metaKey || event.ctrlKey)) return;
       const key = event.key.toLowerCase();
       if (key === 'z') {
@@ -567,12 +593,12 @@ export function App() {
       }
       if (key === 's') {
         event.preventDefault();
-        void saveWorkflow(event.shiftKey);
+        void fileActionsRef.current.saveWorkflow(event.shiftKey);
         return;
       }
       if (key === 'o') {
         event.preventDefault();
-        void openWorkflow();
+        void fileActionsRef.current.openWorkflow();
         return;
       }
       if (isEditableTarget(event.target)) return;
@@ -587,7 +613,7 @@ export function App() {
     };
     window.addEventListener('keydown', keyDown);
     return () => window.removeEventListener('keydown', keyDown);
-  }, [copySelectedBlock, pasteCopiedBlock, redo, undo]);
+  }, [copySelectedBlock, pasteCopiedBlock, redo, undo, runPreviewOpen]);
 
   useEffect(() => {
     setNodes((current) =>
@@ -826,6 +852,9 @@ export function App() {
   };
 
   async function saveWorkflow(saveAs = false): Promise<void> {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
     try {
       const result = await window.vorkflo.saveWorkflow({
         workflow,
@@ -833,19 +862,30 @@ export function App() {
         ...(saveAs ? { saveAs: true } : {}),
       });
       if (!result.canceled) {
+        const changedWhileSaving = currentWorkflowRef.current !== workflow;
         setFilePath(result.filePath);
-        setHistory(createWorkflowHistory(workflow));
-        setHistoryBaselineDirty(false);
-        setDirty(false);
-        clearWorkflowDraft();
-        setNotice('Workflow saved.');
+        if (!changedWhileSaving) {
+          setHistory(createWorkflowHistory(workflow));
+          clearWorkflowDraft();
+        }
+        setHistoryBaselineDirty(changedWhileSaving);
+        setDirty(changedWhileSaving);
+        setNotice(
+          changedWhileSaving
+            ? 'Saved. Newer edits are still unsaved.'
+            : 'Workflow saved.',
+        );
       }
     } catch (error) {
       setNotice(errorMessage(error));
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
   }
 
   async function openWorkflow(): Promise<void> {
+    if (isRunning || startingRunRef.current || savingRef.current) return;
     if (
       dirty &&
       !window.confirm('Discard unsaved changes and open a workflow?')
@@ -864,6 +904,8 @@ export function App() {
       setSnapshots({});
       setRunOutcome(undefined);
       setActiveRunId(undefined);
+      activeRunIdRef.current = undefined;
+      setRunHistory([]);
       setBlockClipboard(undefined);
       setBlockClipboardPresentation(undefined);
       setRunInputValues({});
@@ -880,6 +922,7 @@ export function App() {
   }
 
   function newWorkflow(): void {
+    if (isRunning || startingRunRef.current || savingRef.current) return;
     if (
       dirty &&
       !window.confirm('Discard unsaved changes and create a workflow?')
@@ -895,6 +938,8 @@ export function App() {
     setSnapshots({});
     setRunOutcome(undefined);
     setActiveRunId(undefined);
+    activeRunIdRef.current = undefined;
+    setRunHistory([]);
     setBlockClipboard(undefined);
     setBlockClipboardPresentation(undefined);
     setRunInputValues({});
@@ -905,12 +950,18 @@ export function App() {
 
   async function startRun(): Promise<void> {
     if (
+      isRunning ||
+      startingRunRef.current ||
+      preflightLoading ||
       !validation.valid ||
       !runInputBuild.valid ||
       preflight?.ready !== true ||
       !trustConfirmed
     )
       return;
+    startingRunRef.current = true;
+    setStartingRun(true);
+    activeRunIdRef.current = plannedRunId;
     try {
       setSnapshots({});
       setRunOutcome(undefined);
@@ -927,12 +978,22 @@ export function App() {
       setTrustConfirmed(false);
       setInspectorTab('run');
     } catch (error) {
+      activeRunIdRef.current = undefined;
+      setActiveRunId(undefined);
       setNotice(`Could not start run: ${errorMessage(error)}`);
+    } finally {
+      startingRunRef.current = false;
+      setStartingRun(false);
     }
   }
 
   async function cancelRun(): Promise<void> {
-    if (activeRunId !== undefined) await window.vorkflo.cancelRun(activeRunId);
+    try {
+      if (activeRunId !== undefined)
+        await window.vorkflo.cancelRun(activeRunId);
+    } catch (error) {
+      setNotice(`Could not cancel run: ${errorMessage(error)}`);
+    }
   }
 
   async function copyToClipboard(value: string, label: string): Promise<void> {
@@ -948,8 +1009,12 @@ export function App() {
   }
 
   async function revealArtifact(path: string): Promise<void> {
-    await window.vorkflo.revealFilesystemPath(path);
-    setNotice('Revealed filesystem reference in Finder.');
+    try {
+      await window.vorkflo.revealFilesystemPath(path);
+      setNotice('Revealed filesystem reference in Finder.');
+    } catch (error) {
+      setNotice(`Could not reveal file: ${errorMessage(error)}`);
+    }
   }
 
   return (
@@ -984,21 +1049,25 @@ export function App() {
           <ToolbarButton
             icon={<FileCode2 size={15} />}
             label="New"
+            disabled={isRunning || saving}
             onClick={newWorkflow}
           />
           <ToolbarButton
             icon={<FolderOpen size={15} />}
             label="Open"
+            disabled={isRunning || saving}
             onClick={() => void openWorkflow()}
           />
           <ToolbarButton
             icon={<Save size={15} />}
             label="Save"
+            disabled={saving}
             onClick={() => void saveWorkflow()}
           />
           <ToolbarButton
             icon={<SaveAll size={15} />}
             label="Save As"
+            disabled={saving}
             onClick={() => void saveWorkflow(true)}
           />
           <span className="toolbar-separator" />
@@ -1018,8 +1087,12 @@ export function App() {
           />
           <span className="toolbar-separator" />
           {isRunning ? (
-            <button className="button danger" onClick={() => void cancelRun()}>
-              <CircleStop size={15} /> Cancel
+            <button
+              className="button danger"
+              disabled={startingRun}
+              onClick={() => void cancelRun()}
+            >
+              <CircleStop size={15} /> {startingRun ? 'Starting…' : 'Cancel'}
             </button>
           ) : (
             <button
@@ -1149,6 +1222,7 @@ export function App() {
             selectPath={selectFilesystemPath}
           />
           <RunHistoryPanel
+            disabled={isRunning}
             records={runHistory}
             {...(selectedRunId === undefined ? {} : { selectedRunId })}
             onSelect={(record) => {
@@ -1546,7 +1620,7 @@ export function App() {
             ? 'Execution active'
             : runOutcome
               ? `Last run: ${runOutcome}`
-              : 'Ready when you are'}
+              : 'Ready'}
         </span>
         {notice && (
           <span className="notice" role="status" aria-live="polite">
@@ -1562,6 +1636,7 @@ export function App() {
 
       {runPreviewOpen && (
         <RunPreview
+          starting={startingRun}
           workflow={workflow}
           valid={
             validation.valid && runInputBuild.valid && preflight?.ready === true
@@ -1607,6 +1682,7 @@ export function App() {
           trustConfirmed={trustConfirmed}
           onTrustChange={setTrustConfirmed}
           onClose={() => {
+            if (startingRunRef.current) return;
             setRunPreviewOpen(false);
             setTrustConfirmed(false);
           }}

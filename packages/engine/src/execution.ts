@@ -8,8 +8,10 @@ import type {
 } from './runner.js';
 import { resolveWorkflowRunInputArtifacts } from './run-inputs.js';
 import type {
+  Connection,
   ProcessBlock,
   WorkflowDefinition,
+  WorkflowInputBinding,
   WorkflowRunInputs,
 } from './schema.js';
 import {
@@ -72,6 +74,13 @@ interface ExecutionContext {
   readonly emit: (payload: RuntimeEventPayload, occurredAt?: string) => void;
   readonly results: Map<string, BlockExecutionResult>;
   readonly workflowInputArtifacts: ReadonlyMap<string, Artifact>;
+  readonly routing: ReadonlyMap<string, BlockRouting>;
+}
+
+interface BlockRouting {
+  readonly dependencies: Set<string>;
+  readonly connections: Connection[];
+  readonly inputBindings: WorkflowInputBinding[];
 }
 
 class ResolutionError extends Error {
@@ -156,10 +165,10 @@ export async function executeWorkflow(
     emit,
     results,
     workflowInputArtifacts,
+    routing: indexBlockRouting(workflow),
   };
 
   const blocks = new Map(workflow.blocks.map((block) => [block.id, block]));
-  const incomingBlockIds = collectIncomingBlockIds(workflow);
   const blockPromises = new Map<string, Promise<BlockExecutionResult>>();
 
   try {
@@ -169,20 +178,20 @@ export async function executeWorkflow(
         if (block === undefined) {
           continue;
         }
-        const dependencyPromises = (incomingBlockIds.get(blockId) ?? []).map(
-          (dependencyId) => {
-            const promise = blockPromises.get(dependencyId);
-            if (promise === undefined) {
-              throw new Error(
-                `Execution plan did not schedule dependency "${dependencyId}" before "${blockId}".`,
-              );
-            }
-            return promise;
-          },
-        );
+        const dependencyPromises = [
+          ...(context.routing.get(blockId)?.dependencies ?? []),
+        ].map((dependencyId) => {
+          const promise = blockPromises.get(dependencyId);
+          if (promise === undefined) {
+            throw new Error(
+              `Execution plan did not schedule dependency "${dependencyId}" before "${blockId}".`,
+            );
+          }
+          return promise;
+        });
         const blockPromise = Promise.all(dependencyPromises).then(
           (dependencyResults) =>
-            executeBlock(workflow, block, dependencyResults, context),
+            executeBlock(block, dependencyResults, context),
         );
         blockPromises.set(blockId, blockPromise);
       }
@@ -218,7 +227,6 @@ export async function executeWorkflow(
 }
 
 async function executeBlock(
-  workflow: WorkflowDefinition,
   block: ProcessBlock,
   dependencyResults: readonly BlockExecutionResult[],
   context: ExecutionContext,
@@ -308,12 +316,7 @@ async function executeBlock(
   let inputs: Readonly<Record<string, Artifact>> = keyedRecord();
   let request: ProcessRunRequest;
   try {
-    inputs = resolveInputs(
-      workflow,
-      block,
-      context.results,
-      context.workflowInputArtifacts,
-    );
+    inputs = resolveInputs(block, context);
     context.emit({
       type: 'block_inputs_resolved',
       blockId: block.id,
@@ -467,22 +470,17 @@ async function executeBlock(
 }
 
 function resolveInputs(
-  workflow: WorkflowDefinition,
   block: ProcessBlock,
-  results: ReadonlyMap<string, BlockExecutionResult>,
-  workflowInputArtifacts: ReadonlyMap<string, Artifact>,
+  context: ExecutionContext,
 ): Readonly<Record<string, Artifact>> {
   const inputs = keyedRecord<Artifact>();
-  for (const binding of workflow.inputBindings) {
-    if (binding.to.blockId !== block.id) continue;
-    const artifact = workflowInputArtifacts.get(binding.inputId);
+  const routing = context.routing.get(block.id);
+  for (const binding of routing?.inputBindings ?? []) {
+    const artifact = context.workflowInputArtifacts.get(binding.inputId);
     if (artifact !== undefined) inputs[binding.to.portId] = artifact;
   }
-  for (const connection of workflow.connections) {
-    if (connection.to.blockId !== block.id) {
-      continue;
-    }
-    const artifact = results.get(connection.from.blockId)?.outputs[
+  for (const connection of routing?.connections ?? []) {
+    const artifact = context.results.get(connection.from.blockId)?.outputs[
       connection.from.portId
     ];
     if (artifact === undefined) {
@@ -822,18 +820,25 @@ function createSkipReason(
   };
 }
 
-function collectIncomingBlockIds(
+function indexBlockRouting(
   workflow: WorkflowDefinition,
-): ReadonlyMap<string, readonly string[]> {
-  const incoming = new Map<string, string[]>();
+): ReadonlyMap<string, BlockRouting> {
+  const incoming = new Map<string, BlockRouting>();
   for (const block of workflow.blocks) {
-    incoming.set(block.id, []);
+    incoming.set(block.id, {
+      dependencies: new Set(),
+      connections: [],
+      inputBindings: [],
+    });
   }
+  // Resolve each route once instead of scanning the full graph for every block.
   for (const connection of workflow.connections) {
-    const blockIds = incoming.get(connection.to.blockId);
-    if (blockIds !== undefined && !blockIds.includes(connection.from.blockId)) {
-      blockIds.push(connection.from.blockId);
-    }
+    const routing = incoming.get(connection.to.blockId)!;
+    routing.dependencies.add(connection.from.blockId);
+    routing.connections.push(connection);
+  }
+  for (const binding of workflow.inputBindings) {
+    incoming.get(binding.to.blockId)!.inputBindings.push(binding);
   }
   return incoming;
 }

@@ -31,7 +31,7 @@ try {
   );
   await fs.writeFile(
     path.join(staging, '404.html'),
-    `<!doctype html>\n<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>Page not found — Vorkflo</title><link rel="stylesheet" href="/style.css"><body><main class="wrap section-space"><p class="eyebrow">VORKFLO</p><h1>Lost the flow?</h1><p class="hero-description">This page could not be found.</p><p class="hero-actions error-actions"><a class="button" href="/">Back to Vorkflo</a></p></main></body></html>\n`,
+    `<!doctype html>\n<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>Page not found — Vorkflo</title><link rel="stylesheet" href="/style.css"><body><main class="wrap section-space"><p class="eyebrow">VORKFLO</p><h1>Page not found</h1><p class="hero-description">This page could not be found.</p><p class="hero-actions error-actions"><a class="button" href="/">Back to Vorkflo</a></p></main></body></html>\n`,
   );
   await fs.writeFile(
     path.join(staging, '_headers'),

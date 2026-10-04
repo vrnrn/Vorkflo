@@ -1,6 +1,6 @@
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { parseWorkflowRunInputs } from '@vorkflo/engine';
+import { jsonValueSchema, parseWorkflowRunInputs } from '@vorkflo/engine';
 import type { RunHistoryRecord } from '../shared/contracts.js';
 import type { WorktreeRunRecord } from '../shared/contracts.js';
 
@@ -123,8 +123,14 @@ export class RunHistoryStore {
   }
 
   async #readRecords(): Promise<RunHistoryRecord[]> {
+    let serialized: string;
     try {
-      const serialized = await readFile(this.#filePath, 'utf8');
+      serialized = await readFile(this.#filePath, 'utf8');
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [];
+      throw error;
+    }
+    try {
       const parsed = JSON.parse(serialized) as Partial<RunHistoryFile>;
       if (parsed.schemaVersion !== 1 || !Array.isArray(parsed.records)) {
         return [];
@@ -147,32 +153,43 @@ export class RunHistoryStore {
   }
 
   #pruneBySize(records: readonly RunHistoryRecord[]): RunHistoryRecord[] {
-    const retained = [...records];
-    while (
-      retained.length > 0 &&
-      serializedByteLength(retained) > this.#maxBytes
+    // Count each record once; repeatedly serializing a large history while
+    // evicting its oldest entries makes pruning quadratic in retained bytes.
+    const sizes = records.map((record) =>
+      Buffer.byteLength(JSON.stringify(record)),
+    );
+    let count = records.length;
+    let bytes =
+      Buffer.byteLength(serializeHistory([])) +
+      sizes.reduce((sum, size) => sum + size, 0) +
+      Math.max(0, count - 1);
+    const removed = new Set<number>();
+    for (
+      let index = records.length - 1;
+      index >= 0 && bytes > this.#maxBytes;
+      index -= 1
     ) {
-      let removableIndex = -1;
-      for (let index = retained.length - 1; index >= 0; index -= 1) {
-        if (!hasRetainedWorktree(retained[index]!)) {
-          removableIndex = index;
-          break;
-        }
-      }
-      if (removableIndex < 0) break;
-      retained.splice(removableIndex, 1);
+      if (hasRetainedWorktree(records[index]!)) continue;
+      bytes -= sizes[index]! + (count > 1 ? 1 : 0);
+      count -= 1;
+      removed.add(index);
     }
-    return retained;
+    return records.filter((_, index) => !removed.has(index));
   }
 
   async #writeRecords(records: readonly RunHistoryRecord[]): Promise<void> {
     await mkdir(dirname(this.#filePath), { recursive: true });
     const temporaryPath = `${this.#filePath}.${process.pid}.${crypto.randomUUID()}.tmp`;
-    await writeFile(temporaryPath, serializeHistory(records), {
-      encoding: 'utf8',
-      mode: 0o600,
-    });
-    await rename(temporaryPath, this.#filePath);
+    try {
+      await writeFile(temporaryPath, serializeHistory(records), {
+        encoding: 'utf8',
+        mode: 0o600,
+        flag: 'wx',
+      });
+      await rename(temporaryPath, this.#filePath);
+    } finally {
+      await rm(temporaryPath, { force: true }).catch(() => undefined);
+    }
   }
 }
 
@@ -187,10 +204,6 @@ function compareNewestFirst(
   right: RunHistoryRecord,
 ): number {
   return Date.parse(right.completedAt) - Date.parse(left.completedAt);
-}
-
-function serializedByteLength(records: readonly RunHistoryRecord[]): number {
-  return Buffer.byteLength(serializeHistory(records));
 }
 
 function serializeHistory(records: readonly RunHistoryRecord[]): string {
@@ -269,7 +282,9 @@ function isBlockRunSnapshot(value: unknown): boolean {
       value.state === 'skipped' ||
       value.state === 'cancelled') &&
     isPlainRecord(value.inputs) &&
+    Object.values(value.inputs).every(isArtifact) &&
     Array.isArray(value.artifacts) &&
+    value.artifacts.every(isArtifact) &&
     typeof value.stdout === 'string' &&
     typeof value.stderr === 'string' &&
     (value.exitCode === null || Number.isInteger(value.exitCode)) &&
@@ -282,6 +297,50 @@ function isBlockRunSnapshot(value: unknown): boolean {
     (value.skipReason === undefined || typeof value.skipReason === 'string') &&
     (value.failure === undefined || isExecutionFailure(value.failure))
   );
+}
+
+function isArtifact(value: unknown): boolean {
+  if (
+    !isPlainRecord(value) ||
+    typeof value.id !== 'string' ||
+    !isPlainRecord(value.provenance)
+  )
+    return false;
+  const provenance = value.provenance;
+  if (
+    typeof provenance.runId !== 'string' ||
+    typeof provenance.createdAt !== 'string' ||
+    !Number.isFinite(Date.parse(provenance.createdAt))
+  )
+    return false;
+  if (provenance.source === 'workflow-input') {
+    if (
+      typeof provenance.inputId !== 'string' ||
+      (provenance.valueSource !== 'supplied' &&
+        provenance.valueSource !== 'default')
+    )
+      return false;
+  } else if (
+    typeof provenance.blockId !== 'string' ||
+    typeof provenance.portId !== 'string'
+  )
+    return false;
+
+  switch (value.kind) {
+    case 'text':
+      return typeof value.value === 'string';
+    case 'json':
+      return jsonValueSchema.safeParse(value.value).success;
+    case 'filesystem-reference':
+      return (
+        typeof value.path === 'string' &&
+        (value.entity === 'file' ||
+          value.entity === 'directory' ||
+          value.entity === 'unknown')
+      );
+    default:
+      return false;
+  }
 }
 
 function isExecutionFailure(value: unknown): boolean {
