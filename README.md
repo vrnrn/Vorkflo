@@ -1,13 +1,14 @@
 <div align="center">
   <img src="apps/desktop/build/icon.png" alt="Vorkflo" width="88" />
   <h1>Vorkflo</h1>
-  <p><strong>Your local tools. One visual workflow.</strong></p>
-  <p>Build, run, and inspect automation on your own machine.</p>
+  <p><strong>Visual workflows for local command-line tools.</strong></p>
+  <p>Connect processes, review commands, and inspect results on your Mac.</p>
   <p>
     <img alt="macOS Apple silicon" src="https://img.shields.io/badge/macOS-Apple_silicon-101827?logo=apple&logoColor=white" />
-    <img alt="Local first" src="https://img.shields.io/badge/local-first-55cfa1" />
+    <a href="https://github.com/vrnrn/Vorkflo/actions/workflows/ci.yml"><img alt="Quality checks" src="https://github.com/vrnrn/Vorkflo/actions/workflows/ci.yml/badge.svg" /></a>
     <img alt="MIT license" src="https://img.shields.io/badge/license-MIT-8b9cff" />
   </p>
+  <p><a href="https://vorkflo.vrnrn.com/">Website</a> · <a href="https://github.com/vrnrn/Vorkflo/releases/latest">Download</a> · <a href="docs/release/MACOS.md">Installation</a></p>
 </div>
 
 Vorkflo turns trusted command-line tools into reusable visual workflows. Connect
@@ -30,8 +31,8 @@ states, and the selected process's configuration in the inspector.
   DAG. Independent branches can run in parallel.
 - **Inspect every run.** Review inputs, outputs, errors, timing, and
   cancellation. Bounded local history survives application restarts.
-- **Make room for your workflow.** Collapse the block library or inspector, zoom
-  and pan the canvas, or arrange blocks by their dependencies.
+- **Adjust the canvas.** Collapse the block library or inspector, zoom and pan
+  the canvas, or arrange blocks by their dependencies.
 - **Configure Computer Use.** Declare an MCP backend, HTTPS origins, allowed
   tools, a call budget, and a timeout for a generic browser task.
 
@@ -40,8 +41,8 @@ own installation, authentication, or network requirements.
 
 ## Download
 
-Open this repository's **Releases** tab and download the latest
-`Vorkflo-…-mac-arm64.dmg` or ZIP, plus `SHA256SUMS.txt`.
+Open the [latest release](https://github.com/vrnrn/Vorkflo/releases/latest) and
+download the `Vorkflo-…-mac-arm64.dmg` or ZIP, plus `SHA256SUMS.txt`.
 
 The desktop release supports **Apple silicon Macs running macOS 12 or later**.
 It is unsigned and unnotarized, so macOS may require an explicit security
@@ -97,7 +98,7 @@ The product website at [vorkflo.vrnrn.com](https://vorkflo.vrnrn.com/) lives in
 
 | Command                                | Purpose                                                               |
 | -------------------------------------- | --------------------------------------------------------------------- |
-| `npm run verify`                       | Public-source audit, formatting, build, types, and tests              |
+| `npm run verify`                       | Source audit, formatting, website checks, build, types, and tests     |
 | `npm run build`                        | Compile the engine, adapters, helpers, and desktop                    |
 | `npm run desktop:smoke`                | Exercise real execution, cancellation, failures, and history recovery |
 | `npm run desktop:smoke:packaged`       | Repeat the smoke with an installed application bundle                 |

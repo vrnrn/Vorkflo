@@ -92,6 +92,116 @@ describe('block configuration ordering', () => {
     vi.unstubAllGlobals();
   });
 
+  it('preserves edits made while saving and prevents overlapping file operations', async () => {
+    let finishSave!: (value: { canceled: boolean; filePath: string }) => void;
+    vi.mocked(window.vorkflo.saveWorkflow).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finishSave = resolve;
+        }),
+    );
+    const { getByLabelText, getByText } = render(<App />);
+    fireEvent.change(getByLabelText('Workflow name'), {
+      target: { value: 'Saved version' },
+    });
+    fireEvent.click(getByLabelText('Save'));
+    expect(getByLabelText('Open')).toBeDisabled();
+    expect(getByLabelText('New')).toBeDisabled();
+    fireEvent.keyDown(window, { key: 's', metaKey: true });
+    expect(window.vorkflo.saveWorkflow).toHaveBeenCalledTimes(1);
+    fireEvent.change(getByLabelText('Workflow name'), {
+      target: { value: 'Newer edits' },
+    });
+    await act(async () =>
+      finishSave({ canceled: false, filePath: '/tmp/saved.vorkflo.json' }),
+    );
+    expect(getByLabelText('Workflow name')).toHaveValue('Newer edits');
+    expect(
+      getByText('Saved. Newer edits are still unsaved.'),
+    ).toBeInTheDocument();
+    expect(readWorkflowDraft(window.localStorage)?.workflow.name).toBe(
+      'Newer edits',
+    );
+    expect(readWorkflowDraft(window.localStorage)?.filePath).toBe(
+      '/tmp/saved.vorkflo.json',
+    );
+  });
+
+  it('keeps run controls attached while launch is pending and execution is active', async () => {
+    let finishStart!: (value: { runId: string }) => void;
+    let listener!: (event: DesktopRunEvent) => void;
+    vi.mocked(window.vorkflo.onRunEvent).mockImplementation((callback) => {
+      listener = callback;
+      return () => undefined;
+    });
+    vi.mocked(window.vorkflo.runWorkflow).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finishStart = resolve;
+        }),
+    );
+    vi.mocked(window.vorkflo.listRunHistory).mockResolvedValue([
+      {
+        schemaVersion: 1,
+        runId: 'old-run',
+        workflowId: 'workflow',
+        workflowName: 'Old run',
+        startedAt: '2026-07-09T01:00:00Z',
+        completedAt: '2026-07-09T01:00:01Z',
+        outcome: 'succeeded',
+        runInputs: {},
+        blocks: [],
+      },
+    ]);
+    const { getByRole, getByLabelText } = render(<App />);
+    fireEvent.click(getByRole('button', { name: 'Review & Run' }));
+    fireEvent.click(getByRole('checkbox', { name: /I reviewed the commands/ }));
+    const run = getByRole('button', { name: 'Run workflow' });
+    await waitFor(() => expect(run).toBeEnabled());
+    fireEvent.click(run);
+    fireEvent.click(run);
+    expect(window.vorkflo.runWorkflow).toHaveBeenCalledTimes(1);
+    expect(run).toBeDisabled();
+    expect(getByLabelText('New')).toBeDisabled();
+    expect(getByLabelText('Open')).toBeDisabled();
+    const retained = within(
+      getByRole('region', { name: 'Local run history' }),
+    ).getByRole('button', { name: /succeeded/ });
+    expect(retained).toBeDisabled();
+    await act(async () => finishStart({ runId: 'running' }));
+    act(() =>
+      listener({
+        type: 'run_started',
+        runId: 'running',
+        startedAt: '2026-07-09T01:00:00Z',
+        blocks: [],
+      }),
+    );
+    fireEvent.keyDown(window, { key: 'o', metaKey: true });
+    expect(window.vorkflo.openWorkflow).not.toHaveBeenCalled();
+    act(() =>
+      listener({
+        type: 'run_completed',
+        runId: 'old-run',
+        outcome: 'succeeded',
+        endedAt: '2026-07-09T01:00:01Z',
+      }),
+    );
+    expect(getByRole('button', { name: 'Cancel' })).toBeEnabled();
+    fireEvent.click(getByRole('button', { name: 'Cancel' }));
+    expect(window.vorkflo.cancelRun).toHaveBeenCalledWith('running');
+    act(() =>
+      listener({
+        type: 'run_completed',
+        runId: 'running',
+        outcome: 'cancelled',
+        endedAt: '2026-07-09T01:00:01Z',
+      }),
+    );
+    expect(getByLabelText('Open')).toBeEnabled();
+    expect(retained).toBeEnabled();
+  });
+
   it('reorders literal and input-bound arguments from their drag handles', () => {
     const { container, getByText } = render(<App />);
     const argumentsSection = getByText('Arguments').closest('section');
@@ -427,6 +537,9 @@ describe('block configuration ordering', () => {
       getByRole('checkbox', {
         name: /I reviewed the commands and trust this workflow/,
       }),
+    );
+    await waitFor(() =>
+      expect(getByRole('button', { name: 'Run workflow' })).toBeEnabled(),
     );
     fireEvent.click(getByRole('button', { name: 'Run workflow' }));
 

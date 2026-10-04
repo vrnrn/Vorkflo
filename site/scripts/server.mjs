@@ -15,13 +15,13 @@ const types = {
 
 export function createPreviewServer(directory) {
   return http.createServer(async (req, res) => {
-    const url = new URL(req.url, 'http://127.0.0.1');
     if (!['GET', 'HEAD'].includes(req.method)) {
       res.writeHead(405, { Allow: 'GET, HEAD' });
       res.end();
       return;
     }
     try {
+      const url = new URL(req.url, 'http://127.0.0.1');
       let target = path.resolve(directory, `.${decodeURIComponent(url.pathname)}`);
       if (target !== directory && !target.startsWith(`${directory}${path.sep}`)) {
         res.writeHead(403);

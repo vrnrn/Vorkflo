@@ -174,24 +174,14 @@ export function autoArrangeWorkflow(
       (indegree.get(connection.to.blockId) ?? 0) + 1,
     );
   }
-  for (const targets of outgoing.values()) {
-    targets.sort(
-      (left, right) => (indexById.get(left) ?? 0) - (indexById.get(right) ?? 0),
-    );
-  }
-
   const layerById = new Map(workflow.blocks.map((block) => [block.id, 0]));
   const ready = workflow.blocks
     .filter((block) => indegree.get(block.id) === 0)
     .map((block) => block.id);
   const processed = new Set<string>();
 
-  while (ready.length > 0) {
-    ready.sort(
-      (left, right) => (indexById.get(left) ?? 0) - (indexById.get(right) ?? 0),
-    );
-    const blockId = ready.shift();
-    if (blockId === undefined) break;
+  for (let index = 0; index < ready.length; index += 1) {
+    const blockId = ready[index]!;
     processed.add(blockId);
     for (const targetId of outgoing.get(blockId) ?? []) {
       layerById.set(
@@ -355,6 +345,9 @@ export function removeBlock(
   return {
     ...workflow,
     blocks: workflow.blocks.filter((block) => block.id !== blockId),
+    inputBindings: workflow.inputBindings.filter(
+      (binding) => binding.to.blockId !== blockId,
+    ),
     connections: workflow.connections.filter(
       (connection) =>
         connection.from.blockId !== blockId &&
@@ -422,6 +415,10 @@ export function removeInputPort(
   return replaceBlock(
     {
       ...workflow,
+      inputBindings: workflow.inputBindings.filter(
+        (binding) =>
+          !(binding.to.blockId === block.id && binding.to.portId === portId),
+      ),
       connections: workflow.connections.filter(
         (connection) =>
           !(
@@ -505,28 +502,7 @@ function uniquePortId(block: ProcessBlock, prefix: string): string {
 }
 
 function cloneProcessBlock(block: ProcessBlock, id = block.id): ProcessBlock {
-  return {
-    ...block,
-    id,
-    inputs: block.inputs.map((port) => ({ ...port })),
-    outputs: block.outputs.map((port) => ({ ...port })),
-    invocation: {
-      ...block.invocation,
-      arguments: block.invocation.arguments.map((argument) => ({
-        ...argument,
-      })),
-      environment: Object.fromEntries(
-        Object.entries(block.invocation.environment).map(([name, value]) => [
-          name,
-          { ...value },
-        ]),
-      ),
-      ...(block.invocation.stdin === undefined
-        ? {}
-        : { stdin: { ...block.invocation.stdin } }),
-      outputs: block.invocation.outputs.map((output) => ({ ...output })),
-    },
-  };
+  return { ...structuredClone(block), id };
 }
 
 function freshBlockId(

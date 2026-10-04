@@ -71,6 +71,30 @@ describe('workflow inputs', () => {
     ).toBe('{\n  "answer": 42\n}');
   });
 
+  it('handles user-defined input IDs without inheriting object properties', () => {
+    const ids = ['__proto__', 'constructor', 'report.name'];
+    const workflow = {
+      ...createWorkflow(),
+      inputs: ids.map((id) => ({
+        id,
+        name: id,
+        artifactKind: 'text' as const,
+        required: true,
+      })),
+    };
+    const missing = buildWorkflowRunInputs(workflow, {});
+    expect(Object.keys(missing.errors)).toEqual(ids);
+    const values = Object.fromEntries(ids.map((id) => [id, `value for ${id}`]));
+    const result = buildWorkflowRunInputs(workflow, values);
+    expect(result.valid).toBe(true);
+    expect(Object.keys(result.inputs)).toEqual(ids);
+    expect(result.inputs.__proto__).toEqual({
+      kind: 'text',
+      value: 'value for __proto__',
+    });
+    expect(Object.getPrototypeOf(result.inputs)).toBeNull();
+  });
+
   it('validates required and malformed values before a run', () => {
     let workflow = addWorkflowInput(createWorkflow(), 'text').workflow;
     workflow = addWorkflowInput(workflow, 'json').workflow;

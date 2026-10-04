@@ -9,9 +9,8 @@
 - **Current horizon:** v0.4 public desktop release with generic, bounded
   Computer Use
 
-This document is Vorkflo's durable product compass. It records the problem we
-are solving, the product boundaries, and the decisions that should guide design
-and implementation.
+This document records the product scope, execution model, and decisions that
+guide implementation.
 
 It is intentionally not a detailed technical specification or roadmap. Those
 documents may change more frequently. When a proposed feature or architecture
@@ -406,15 +405,8 @@ cite the decision it changes.
 | VOR-031 | 2026-07-16 | Target bounded Computer Use as a desktop-owned specialized editor for v0.4, compiling to a direct generic process with no browser concepts in the engine.                                               | Browser-operated applications are valuable local capabilities, but provider-specific navigation and authority belong outside portable scheduling semantics.                               |
 | VOR-032 | 2026-07-16 | Treat retrieved web content as untrusted evidence that cannot mutate instructions, origins, tool grants, or execution authority.                                                                        | Prompt injection and hostile page content must not be able to widen a reviewed workflow's authority.                                                                                      |
 | VOR-036 | 2026-07-16 | Use non-interactive `codex exec` as the Computer Use controller behind an MCP policy proxy; treat browser visible/headless mode as a separately accepted backend property.                              | Codex CLI can orchestrate browser tools without an interactive terminal, while deterministic proxy enforcement prevents model or page content from widening reviewed authority.           |
-
-| VOR-041 | 2026-10-02 | Supersede VOR-033 through VOR-040 application-specific
-release scope with a generic public automation platform. Keep VOR-036's bounded
-controller design. | Reusable orchestration must not distribute private
-workflows, research, local identity, or account-specific integrations. | |
-VOR-042 | 2026-10-02 | Package runtime helpers as application resources and
-resolve their portable references identically during review and execution. |
-Downloads must be usable without the repository, and the reviewed invocation
-must match execution. |
+| VOR-041 | 2026-10-02 | Supersede VOR-033 through VOR-040 application-specific release scope with a generic public automation platform. Keep VOR-036’s bounded controller design.                                               | Reusable orchestration must not distribute private workflows, research, local identity, or account-specific integrations.                                                                 |
+| VOR-042 | 2026-10-02 | Package runtime helpers as application resources and resolve their portable references identically during review and execution.                                                                         | Downloads must be usable without the repository, and the reviewed invocation must match execution.                                                                                        |
 
 ## Open questions
 

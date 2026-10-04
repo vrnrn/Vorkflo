@@ -65,6 +65,8 @@ async function runChild(
     shell: false,
     stdio: ['pipe', 'inherit', 'inherit'],
   });
+  // The child may exit before reading the context; report its exit, not EPIPE.
+  child.stdin.on('error', () => undefined);
   child.stdin.end(stdin);
   return new Promise<number>((resolveExit, reject) => {
     child.once('error', reject);

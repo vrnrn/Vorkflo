@@ -123,6 +123,121 @@ describe('local run history', () => {
       expect.objectContaining({ runId: 'recovered' }),
     ]);
   });
+
+  it('rejects malformed nested artifacts without losing valid neighboring records', async () => {
+    const filePath = await historyPath();
+    const valid = record('valid', 'workflow-a');
+    const artifact = {
+      id: 'text-output',
+      kind: 'text',
+      value: 'Hello 🌱',
+      provenance: {
+        runId: 'valid',
+        blockId: 'block-a',
+        portId: 'out',
+        createdAt: valid.completedAt,
+      },
+    };
+    const good = {
+      ...valid,
+      blocks: [
+        {
+          ...valid.blocks[0]!,
+          artifacts: [artifact],
+          inputs: { text: artifact },
+        },
+      ],
+    };
+    const malformed = [
+      null,
+      {},
+      { ...artifact, provenance: null },
+      { ...artifact, value: {} },
+      { ...artifact, kind: 'filesystem-reference', path: 123 },
+      {
+        ...artifact,
+        kind: 'filesystem-reference',
+        path: '/tmp/file',
+        entity: ['file'],
+      },
+      {
+        ...artifact,
+        provenance: {
+          ...artifact.provenance,
+          source: 'workflow-input',
+          inputId: 'text',
+          valueSource: ['supplied'],
+        },
+      },
+    ];
+    await writeFile(
+      filePath,
+      JSON.stringify({
+        schemaVersion: 1,
+        records: [
+          good,
+          ...malformed.flatMap((bad, index) => [
+            {
+              ...valid,
+              runId: `bad-output-${index}`,
+              blocks: [{ ...valid.blocks[0]!, artifacts: [bad] }],
+            },
+            {
+              ...valid,
+              runId: `bad-input-${index}`,
+              blocks: [{ ...valid.blocks[0]!, inputs: { text: bad } }],
+            },
+          ]),
+        ],
+      }),
+    );
+    const store = new RunHistoryStore(filePath, {
+      now: () => new Date(valid.completedAt),
+    });
+    await expect(store.list()).resolves.toEqual([good]);
+  });
+
+  it('counts UTF-8 bytes and commas exactly while preserving retained worktrees', async () => {
+    const filePath = await historyPath();
+    const protectedRecord = retainedWorktreeRecord();
+    const newest = {
+      ...record('newest', 'workflow-a', '2026-07-09T11:59:00Z'),
+      workflowName: 'Flow 🌱 日本語',
+    };
+    const records = [
+      newest,
+      record('middle', 'workflow-a', '2026-07-09T11:30:00Z'),
+      protectedRecord,
+    ];
+    const budget = Buffer.byteLength(
+      `${JSON.stringify({ schemaVersion: 1, records: [newest, protectedRecord] })}\n`,
+    );
+    await writeFile(filePath, JSON.stringify({ schemaVersion: 1, records }));
+    const options = {
+      maxBytes: budget,
+      now: () => new Date('2026-07-09T12:00:00Z'),
+    };
+    await expect(
+      new RunHistoryStore(filePath, options).list(),
+    ).resolves.toEqual([newest, protectedRecord]);
+    expect((await readFile(filePath)).byteLength).toBe(budget);
+    await expect(
+      new RunHistoryStore(filePath, {
+        ...options,
+        maxBytes: budget - 1,
+      }).list(),
+    ).resolves.toEqual([protectedRecord]);
+    await expect(
+      new RunHistoryStore(filePath, { ...options, maxBytes: 1 }).list(),
+    ).resolves.toEqual([protectedRecord]);
+  });
+
+  it('propagates filesystem failures instead of treating inaccessible history as empty', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'vorkflo-history-'));
+    const store = new RunHistoryStore(directory);
+    await expect(store.list()).rejects.toThrow();
+    await expect(store.append(record('new', 'workflow-a'))).rejects.toThrow();
+  });
 });
 
 function retainedWorktreeRecord(): RunHistoryRecord {

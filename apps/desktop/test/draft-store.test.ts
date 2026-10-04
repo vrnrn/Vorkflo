@@ -61,6 +61,24 @@ describe('renderer workflow draft storage', () => {
     clearWorkflowDraft(storage);
     expect(readWorkflowDraft(storage)).toBeUndefined();
   });
+
+  it('tolerates localStorage access itself being unavailable', () => {
+    const descriptor = Object.getOwnPropertyDescriptor(window, 'localStorage');
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      get() {
+        throw new Error('Storage unavailable');
+      },
+    });
+    try {
+      expect(readWorkflowDraft()).toBeUndefined();
+      expect(writeWorkflowDraft({ workflow: createWorkflow() })).toBe(false);
+      expect(() => clearWorkflowDraft()).not.toThrow();
+    } finally {
+      if (descriptor !== undefined)
+        Object.defineProperty(window, 'localStorage', descriptor);
+    }
+  });
 });
 
 class MemoryDraftStorage implements DraftStorage {

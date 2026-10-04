@@ -245,17 +245,17 @@ main:focus {
 }
 h1 {
   margin-top: 25px;
-  font-size: clamp(64px, 7vw, 91px);
+  font-size: clamp(58px, 6.5vw, 84px);
   font-weight: 560;
   line-height: 1.04;
-  letter-spacing: -5.5px;
+  letter-spacing: -0.055em;
 }
 em {
   font-family: Georgia, 'Times New Roman', serif;
   font-weight: 400;
 }
 h1 em {
-  letter-spacing: -5px;
+  letter-spacing: -0.055em;
   color: #386149;
 }
 .hero-description {
@@ -365,29 +365,8 @@ h1 em {
   left: 295px;
   top: 245px;
 }
-.hero-to-demo {
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-end;
-  height: 104px;
-  padding-top: 41px;
-  margin-right: 50px;
-  color: #859275;
-  gap: 12px;
-}
-.hero-to-demo span {
-  font-family: Georgia, serif;
-  font-style: italic;
-  font-size: 13px;
-  padding-top: 6px;
-  transform: rotate(-3deg);
-}
-.hero-to-demo svg {
-  width: 40px;
-  height: 44px;
-  stroke: #91a47d;
-  stroke-width: 1.6;
-  transform: rotate(-10deg);
+.flow-section {
+  margin-top: 64px;
 }
 .workflow-demo {
   overflow: hidden;
@@ -1505,7 +1484,7 @@ h2 em {
     padding-top: 54px;
   }
   h1 {
-    font-size: 75px;
+    font-size: 64px;
     letter-spacing: -4px;
   }
   h1 em {
@@ -1519,9 +1498,6 @@ h2 em {
   }
   .orbit-file {
     display: none;
-  }
-  .hero-to-demo {
-    margin-right: 0;
   }
   .demo-grid {
     margin-inline: 24px;
@@ -1697,12 +1673,12 @@ h2 em {
     gap: 6px;
   }
   h1 {
-    font-size: clamp(48px, 14vw, 73px);
-    letter-spacing: -3.5px;
+    font-size: clamp(38px, 11.5vw, 68px);
+    letter-spacing: -0.055em;
     margin-top: 27px;
   }
   h1 em {
-    letter-spacing: -3px;
+    letter-spacing: -0.05em;
   }
   .hero-description {
     font-size: 13px;
@@ -1743,18 +1719,6 @@ h2 em {
     flex-basis: 100%;
     justify-content: center;
   }
-  .hero-to-demo {
-    padding-top: 28px;
-    height: 88px;
-    justify-content: center;
-  }
-  .hero-to-demo span {
-    font-size: 11px;
-  }
-  .hero-to-demo svg {
-    width: 30px;
-    height: 35px;
-  }
   .demo-toolbar {
     padding: 14px;
     gap: 8px;
@@ -1776,7 +1740,8 @@ h2 em {
   }
   .demo-scenarios button {
     padding: 8px 9px;
-    font-size: 9px;
+    font-size: 11px;
+    min-height: 44px;
   }
   .demo-grid {
     height: auto;

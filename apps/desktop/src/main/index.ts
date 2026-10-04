@@ -298,6 +298,7 @@ function registerIpc(runHistory: RunHistoryStore): void {
     try {
       prepared = await prepareAgentWorktrees(configuredWorkflow, {
         runId,
+        runInputs,
         storageRoot: join(app.getPath('userData'), 'worktrees'),
         baseDirectory,
         runtime: worktreeRuntime,

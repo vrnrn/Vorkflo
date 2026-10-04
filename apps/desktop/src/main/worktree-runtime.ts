@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
-import { access, mkdir, open, readFile, stat } from 'node:fs/promises';
-import { isAbsolute, relative, resolve } from 'node:path';
+import { access, mkdir, open, stat } from 'node:fs/promises';
+import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
@@ -404,7 +404,8 @@ async function renderUntrackedFiles(
     }
     const absolutePath = resolve(worktreePath, path);
     const child = relative(resolve(worktreePath), absolutePath);
-    if (child.startsWith('..') || isAbsolute(child)) continue;
+    if (child === '..' || child.startsWith(`..${sep}`) || isAbsolute(child))
+      continue;
     try {
       const metadata = await stat(absolutePath);
       if (!metadata.isFile()) continue;
@@ -570,7 +571,9 @@ function artifactDependsOnScope(
   return artifactPaths.some((path) => {
     if (!isAbsolute(path)) return false;
     const child = relative(root, resolve(path));
-    return child === '' || (!child.startsWith('..') && !isAbsolute(child));
+    return (
+      child !== '..' && !child.startsWith(`..${sep}`) && !isAbsolute(child)
+    );
   });
 }
 

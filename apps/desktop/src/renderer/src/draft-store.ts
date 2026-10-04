@@ -20,9 +20,10 @@ export interface DraftStorage {
 }
 
 export function readWorkflowDraft(
-  storage: DraftStorage = window.localStorage,
+  storage?: DraftStorage,
 ): WorkflowDraft | undefined {
   try {
+    storage ??= window.localStorage;
     const serialized = storage.getItem(workflowDraftStorageKey);
     if (serialized === null) return undefined;
     const input: unknown = JSON.parse(serialized);
@@ -41,7 +42,7 @@ export function readWorkflowDraft(
     };
   } catch {
     try {
-      storage.removeItem(workflowDraftStorageKey);
+      storage?.removeItem(workflowDraftStorageKey);
     } catch {
       // Storage may be unavailable; recovery remains best effort.
     }
@@ -51,10 +52,11 @@ export function readWorkflowDraft(
 
 export function writeWorkflowDraft(
   draft: Omit<WorkflowDraft, 'schemaVersion' | 'updatedAt'>,
-  storage: DraftStorage = window.localStorage,
+  storage?: DraftStorage,
   now: () => Date = () => new Date(),
 ): boolean {
   try {
+    storage ??= window.localStorage;
     const workflow = parseWorkflowDefinition(draft.workflow);
     const record: WorkflowDraft = {
       schemaVersion: 1,
@@ -71,10 +73,9 @@ export function writeWorkflowDraft(
   }
 }
 
-export function clearWorkflowDraft(
-  storage: DraftStorage = window.localStorage,
-): void {
+export function clearWorkflowDraft(storage?: DraftStorage): void {
   try {
+    storage ??= window.localStorage;
     storage.removeItem(workflowDraftStorageKey);
   } catch {
     // Draft cleanup is best effort and must not block save/open/new.

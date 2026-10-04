@@ -8,7 +8,7 @@ const scenarios = {
       ['Count the words', 'wc', 'PROCESS', 'terminal', 'TEXT'],
       ['Assemble report', 'cat', 'PROCESS', 'file', 'TEXT'],
     ],
-    output: 'GOOD TOOLS. GREAT TOGETHER.\nWord count: 4',
+    output: 'HELLO FROM VORKFLO\nWord count: 3',
   },
   agents: {
     name: 'Agent workflow',
@@ -65,6 +65,7 @@ function resetRun() {
   runLabel.textContent = 'Run demo';
   runState.lastChild.textContent = 'Ready to run';
   output.hidden = true;
+  status.textContent = scenarios[current].description;
 }
 
 function selectScenario(key) {
@@ -100,7 +101,7 @@ function finishRun() {
   wires.forEach((wire) => wire.classList.add('is-complete'));
   demo.querySelector('[data-output-text]').textContent = scenarios[current].output;
   output.hidden = false;
-  status.textContent = 'Demo complete. Every step is ready to inspect.';
+  status.textContent = 'Demo complete. All four steps succeeded.';
   runState.lastChild.textContent = 'Run succeeded';
   runButton.disabled = false;
   runLabel.textContent = 'Run again';
@@ -140,6 +141,12 @@ runButton.addEventListener('click', () => {
 controls.forEach((button) =>
   button.addEventListener('click', () => selectScenario(button.dataset.scenario)),
 );
+motion.addEventListener('change', () => {
+  if (motion.matches && runButton.disabled) {
+    timers.forEach(clearTimeout);
+    finishRun();
+  }
+});
 window.addEventListener('pagehide', resetRun);
 demo.querySelector('[data-demo-controls]').hidden = false;
 runButton.hidden = false;

@@ -29,6 +29,70 @@ import {
 } from '../src/renderer/src/workflow';
 
 describe('desktop workflow editing', () => {
+  it('removes workflow-input bindings when deleting their block or input port', () => {
+    const consumer = addInputPort(createProcessBlock('consumer'));
+    const other = addInputPort(createProcessBlock('other'));
+    const workflow: WorkflowDefinition = {
+      ...createWorkflow(),
+      blocks: [consumer, other],
+      inputs: [
+        { id: 'text', name: 'Text', artifactKind: 'text', required: true },
+      ],
+      inputBindings: [consumer, other].map((block) => ({
+        id: block.id,
+        inputId: 'text',
+        to: { blockId: block.id, portId: block.inputs[0]!.id },
+      })),
+    };
+    for (const next of [
+      removeBlock(workflow, consumer.id),
+      removeInputPort(workflow, consumer, consumer.inputs[0]!.id),
+    ]) {
+      expect(next.inputBindings).toEqual([workflow.inputBindings[1]]);
+      expect(validateWorkflow(next).valid).toBe(true);
+    }
+    expect(workflow.inputBindings).toHaveLength(2);
+  });
+
+  it('copies nested invocation templates independently of the source and each paste', () => {
+    const block = createProcessBlock('source');
+    block.invocation.arguments = [
+      {
+        type: 'template',
+        template: '{{message}}',
+        inputs: { message: { value: 'original' } },
+      },
+    ];
+    block.invocation.stdin = {
+      template: '{{message}}',
+      inputs: { message: { value: 'stdin' } },
+    };
+    const workflow = { ...createWorkflow(), blocks: [block] };
+    const clipboard = copyProcessBlock(workflow, block.id)!;
+    const pasted = pasteProcessBlock(workflow, clipboard, {
+      createId: () => 'copy',
+    }).workflow.blocks[1]!;
+    const original = block.invocation.arguments[0]!;
+    if (original.type !== 'template') throw new Error('Expected template');
+    original.inputs.message = { value: 'changed' };
+    expect(clipboard.block.invocation.arguments[0]).toMatchObject({
+      inputs: { message: { value: 'original' } },
+    });
+    expect(pasted.invocation.arguments[0]).toMatchObject({
+      inputs: { message: { value: 'original' } },
+    });
+    expect(pasted.invocation.stdin).not.toBe(clipboard.block.invocation.stdin);
+    if (
+      pasted.invocation.stdin !== undefined &&
+      'inputs' in pasted.invocation.stdin &&
+      clipboard.block.invocation.stdin !== undefined &&
+      'inputs' in clipboard.block.invocation.stdin
+    ) {
+      expect(pasted.invocation.stdin.inputs).not.toBe(
+        clipboard.block.invocation.stdin.inputs,
+      );
+    }
+  });
   it('applies an explicit layout without discarding node measurements or selection', () => {
     const workflow = createWorkflow();
     const current = reconcileProcessNodes(workflow, [], () => 'idle').map(
